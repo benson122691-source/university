@@ -7,8 +7,8 @@ Random Forest,smote,SMOTE,0.9331,0.9321,0.9325,0.9918,19859,0.5
 Random Forest,undersample+optimized,下採樣+最優化,0.9229,0.9217,0.9186,0.993,8469,0.3
 Random Forest,undersample,下採樣,0.9219,0.9218,0.9182,0.9904,8469,0.3
 Random Forest,optimized,最優化,0.9338,0.9301,0.9318,0.9933,10888,0.3
-SVM,smote,SMOTE,0.9369,0.9366,0.9363,0.9942,19859,7.1
-SVM,undersample+optimized,下採樣+最優化,0.9301,0.9295,0.9262,0.9865,8469,4.3
+SVM,smote,SMOTE,0.9369,0.9366,0.9363,0.9942,19859,6.9
+SVM,undersample+optimized,下採樣+最優化,0.9301,0.9295,0.9262,0.9865,8469,4.2
 SVM,undersample,下採樣,0.9273,0.9243,0.9206,0.9916,8469,4.2
 SVM,optimized,最優化,0.9393,0.9358,0.9375,0.9923,10888,1.4
 XGBoost,smote,SMOTE,0.939,0.938,0.9385,0.9951,19859,0.6

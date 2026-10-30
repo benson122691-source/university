@@ -1,0 +1,5 @@
+﻿Classifier,SchemeA_F1,SchemeB_F1
+KNN,0.6342,0.6339
+Random Forest,0.6775,0.68
+SVM,0.6452,0.6452
+XGBoost,0.6614,0.6627
