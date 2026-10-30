@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# 資料集（首次執行自動下載）
+data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
