@@ -1,38 +1,37 @@
 # -*- coding: utf-8 -*-
 """
-欠採樣於不平衡分類分析 (Undersampling for Imbalanced Classification)
-====================================================================
-畢業專題（期末報告）
-指導老師：林真如 教授
+Undersampling for Imbalanced Classification
+===========================================
+A multi-dataset pipeline that evaluates undersampling techniques for
+imbalanced classification, comparing KNN / Random Forest / SVM / XGBoost
+classifiers across SMOTE / undersampling / hyperparameter optimization.
 
-支援多資料集，驗證欠採樣策略的通用性（對應簡報「未來展望」：
-更廣泛的資料集驗證）：
+Datasets:
+  1. dry_bean    - Dry Bean Dataset (UCI #602): agriculture, 13,611 samples,
+                   16 features, 7 classes (multiclass, imbalance ~= 6.8:1)
+  2. credit_card - Taiwan Credit Card Default (UCI #350): finance, 30,000
+                   samples, 23 features, binary (imbalance ~= 3.5:1)
 
-  1. dry_bean     — Dry Bean Dataset（UCI #602）：農業，13,611 筆、
-                    16 特徵、7 類別（多分類，不平衡比例約 6.8:1）
-  2. credit_card  — Taiwan Credit Card Default（UCI #350）：金融，
-                    30,000 筆、23 特徵、二元分類（違約 vs 非違約，
-                    不平衡比例約 3.5:1）
+Both datasets run the exact same pipeline:
+  1. Data loading and class-distribution analysis
+  2. Train/test split: 80% / 20% (stratified)
+  3. Standardization: StandardScaler (fit on the training set only)
+  4. Undersampling:
+       Scheme A - undersample only the majority class (ratios 1:1 ~ 1:5)
+       Scheme B - undersample all non-minority classes to the minority count
+       Note: for binary data schemes A and B coincide
+  5. Classifiers: KNN, Random Forest, SVM, XGBoost
+  6. Methods: SMOTE, Undersampling, Hyperparameter optimization,
+              Undersampling + optimization
+  7. Metrics: Precision, Recall, F1-Score, ROC AUC (macro average)
 
-兩資料集皆執行相同研究流程：
-  1. 資料選取與類別分布分析
-  2. 資料分割：80% 訓練集 / 20% 測試集（分層抽樣）
-  3. 標準化：StandardScaler（僅以訓練集擬合）
-  4. 欠採樣：
-       方案 A：僅對最多數組欠採樣（比例 1:1 ~ 1:5）
-       方案 B：對所有非最少組欠採樣（全部類別降至最少數組數量）
-       註：二元分類時方案 A 與方案 B 相同（兩類即為最少/最多組）
-  5. 分類器：KNN、隨機森林、SVM、XGBoost
-  6. 方法比較：SMOTE、欠採樣、超參數最佳化、欠採樣+最佳化
-  7. 評估指標：Precision、Recall、F1-Score、ROC AUC（macro 平均）
+Usage:
+    python undersampling_analysis.py                      # all datasets
+    python undersampling_analysis.py --dataset dry_bean   # one dataset only
 
-執行方式：
-    python undersampling_analysis.py                      # 全部資料集
-    python undersampling_analysis.py --dataset dry_bean   # 僅指定資料集
-
-輸出：
-    figures/<資料集>/  — 6 張圖表（PNG）
-    results/<資料集>/  — 4 個結果表格（CSV）
+Output:
+    figures/<dataset>/  - 6 charts (PNG)
+    results/<dataset>/  - 4 result tables (CSV)
 """
 
 import argparse
@@ -45,11 +44,11 @@ import numpy as np
 import pandas as pd
 
 import matplotlib
-matplotlib.use("Agg")  # 不開啟視窗，直接存檔
+matplotlib.use("Agg")  # save to disk, no interactive window
 import matplotlib.pyplot as plt
 from matplotlib import rcParams
 
-# ---------- 全域設定 ----------
+# ---------- Global settings ----------
 RANDOM_STATE = 42
 TEST_SIZE = 0.2
 
@@ -60,15 +59,15 @@ RESULT_DIR = BASE_DIR / "results"
 
 CLASSIFIER_NAMES = ["KNN", "Random Forest", "SVM", "XGBoost"]
 
-# 方法順序（對應簡報 F1 比較圖與分類成果表）
+# Method order (matches the F1 comparison chart and result tables)
 METHOD_ORDER = [
     ("smote", "SMOTE"),
-    ("undersample+optimized", "下採樣+最優化"),
-    ("undersample", "下採樣"),
-    ("optimized", "最優化"),
+    ("undersample+optimized", "Undersampling+Optimized"),
+    ("undersample", "Undersampling"),
+    ("optimized", "Optimized"),
 ]
 
-# 簡報中經最佳化後的分類器參數
+# Classifier parameters after hyperparameter optimization
 OPTIMIZED_PARAMS = {
     "KNN": dict(metric="euclidean", n_neighbors=9, weights="distance"),
     "Random Forest": dict(max_depth=None, max_features="log2", min_samples_leaf=1,
@@ -84,7 +83,7 @@ DEFAULT_PARAMS = {
     "XGBoost": dict(n_estimators=100),
 }
 
-# 中文圖表字型（Windows 微軟正黑體）
+# Chinese font for charts (Windows Microsoft JhengHei)
 rcParams["font.sans-serif"] = ["Microsoft JhengHei", "SimHei", "Noto Sans CJK TC",
                                "DejaVu Sans"]
 rcParams["axes.unicode_minus"] = False
@@ -98,11 +97,11 @@ except Exception:
     pass
 
 
-# ---------- 資料集註冊表 ----------
+# ---------- Dataset registry ----------
 DATASET_REGISTRY = {
     "dry_bean": {
-        "display": "Dry Bean Dataset（乾豆資料集）",
-        "domain": "農業：豆類影像特徵",
+        "display": "Dry Bean Dataset",
+        "domain": "Agriculture: bean image features",
         "target": "Class",
         "uci_id": 602,
         "uci_name": "dry+bean+dataset",
@@ -112,12 +111,12 @@ DATASET_REGISTRY = {
             DATA_DIR / "DryBean_Dataset.csv",
         ],
         "drop_cols": [],
-        "read_kwargs": {},           # read_excel 額外參數
-        "class_labels": None,        # 類別顯示名稱（None 使用原值）
+        "read_kwargs": {},           # extra kwargs for read_excel
+        "class_labels": None,        # display names (None = raw values)
     },
     "credit_card": {
-        "display": "Taiwan Credit Card Default（信用卡客戶違約）",
-        "domain": "金融：信用卡違約",
+        "display": "Taiwan Credit Card Default",
+        "domain": "Finance: credit card default",
         "target": "default payment next month",
         "uci_id": 350,
         "uci_name": "default+of+credit+card+clients",
@@ -127,50 +126,52 @@ DATASET_REGISTRY = {
             DATA_DIR / "credit_card.csv",
         ],
         "drop_cols": ["ID"],
-        "read_kwargs": {"header": 1},  # .xls 第二列才是表頭
+        "read_kwargs": {"header": 1},  # .xls header is on the second row
         "class_labels": {0: "Non-default (0)", 1: "Default (1)"},
     },
 }
 
 
-# ---------- 1. 資料取得 ----------
+# ---------- 1. Data loading ----------
 def ensure_dataset(dataset_key: str) -> pd.DataFrame:
-    """依資料集註冊表取得資料；本機無檔案時自動從 UCI 下載。"""
+    """Load data per the registry; download from UCI when no local file exists."""
     cfg = DATASET_REGISTRY[dataset_key]
     DATA_DIR.mkdir(exist_ok=True)
 
     for p in cfg["local_candidates"]:
         if p.exists():
-            print(f"[資料] 使用本機檔案：{p}")
+            print(f"[Data] Using local file: {p}")
             if p.suffix == ".csv":
                 return pd.read_csv(p)
             return pd.read_excel(p, **cfg["read_kwargs"])
 
-    print(f"[資料] 本機無 {dataset_key} 資料，從 UCI 下載 ...")
+    print(f"[Data] No local {dataset_key} file, downloading from UCI ...")
     import urllib.request
     import zipfile
 
     zip_path = DATA_DIR / f"{dataset_key}.zip"
-    url = f"https://archive.ics.uci.edu/static/public/{cfg['uci_id']}/{cfg['uci_name']}.zip"
+    url = (f"https://archive.ics.uci.edu/static/public/{cfg['uci_id']}/"
+           f"{cfg['uci_name']}.zip")
     urllib.request.urlretrieve(url, zip_path)
-    print(f"[資料] 下載完成：{zip_path.name}（{zip_path.stat().st_size / 1e6:.1f} MB）")
+    print(f"[Data] Downloaded: {zip_path.name} "
+          f"({zip_path.stat().st_size / 1e6:.1f} MB)")
 
     dest = DATA_DIR / ("DryBeanDataset" if dataset_key == "dry_bean" else "CreditCard")
     dest.mkdir(exist_ok=True)
     with zipfile.ZipFile(zip_path, "r") as zf:
         zf.extractall(dest)
 
-    # 解壓後找出可讀檔案（資料夾內可能有多個格式）
+    # Pick the first readable file inside the extracted folder
     for f in dest.rglob("*"):
         if f.suffix in (".xlsx", ".xls", ".csv"):
             if f.suffix == ".csv":
                 return pd.read_csv(f)
             return pd.read_excel(f, **cfg["read_kwargs"])
-    raise FileNotFoundError(f"無法在 {dest} 找到可讀資料檔")
+    raise FileNotFoundError(f"No readable data file found under {dest}")
 
 
 def load_dataset(dataset_key: str) -> tuple:
-    """回傳 (df, target_col, display_classes)。"""
+    """Return (df, target_column, display_classes)."""
     cfg = DATASET_REGISTRY[dataset_key]
     df = ensure_dataset(dataset_key)
     if cfg["drop_cols"]:
@@ -183,11 +184,11 @@ def load_dataset(dataset_key: str) -> tuple:
     return df, target, classes
 
 
-# ---------- 2. 欠採樣輔助函式 ----------
+# ---------- 2. Undersampling helpers ----------
 def scheme_a_undersample(X: pd.DataFrame, y: pd.Series, ratio: float = 1.0,
                          random_state: int = RANDOM_STATE):
-    """方案 A：僅對最多數組欠採樣。
-    最多數類別的目標數量 = 最少數類別數量 × ratio（例如 1:1 ~ 1:5）。
+    """Scheme A: undersample only the majority class.
+    The majority class is reduced to (minority count x ratio), e.g. 1:1 ~ 1:5.
     """
     counts = y.value_counts()
     minority = counts.idxmin()
@@ -211,7 +212,7 @@ def scheme_a_undersample(X: pd.DataFrame, y: pd.Series, ratio: float = 1.0,
 
 def scheme_b_undersample(X: pd.DataFrame, y: pd.Series,
                          random_state: int = RANDOM_STATE):
-    """方案 B：對所有非最少組欠採樣（全部類別降至最少數組數量）。"""
+    """Scheme B: undersample all non-minority classes to the minority count."""
     counts = y.value_counts()
     n_min = int(counts.min())
     rng = np.random.RandomState(random_state)
@@ -225,16 +226,16 @@ def scheme_b_undersample(X: pd.DataFrame, y: pd.Series,
 
 
 def apply_smote(X: pd.DataFrame, y: pd.Series, random_state: int = RANDOM_STATE):
-    """SMOTE 過採樣（合成少數類樣本）。"""
+    """SMOTE oversampling (synthesizes minority-class samples)."""
     from imblearn.over_sampling import SMOTE
     smote = SMOTE(random_state=random_state)
     Xr, yr = smote.fit_resample(X, y)
     return pd.DataFrame(Xr, columns=X.columns), pd.Series(yr)
 
 
-# ---------- 3. 分類器 ----------
+# ---------- 3. Classifiers ----------
 def build_classifier(name: str, optimized: bool):
-    """建立分類器；optimized=True 時使用簡報最佳化參數。"""
+    """Build a classifier; optimized=True uses the tuned hyperparameters."""
     params = OPTIMIZED_PARAMS[name] if optimized else DEFAULT_PARAMS[name]
     if name == "KNN":
         from sklearn.neighbors import KNeighborsClassifier
@@ -252,17 +253,17 @@ def build_classifier(name: str, optimized: bool):
         from xgboost import XGBClassifier
         return XGBClassifier(**params, random_state=RANDOM_STATE, n_jobs=-1,
                              verbosity=0)
-    raise ValueError(f"未知分類器：{name}")
+    raise ValueError(f"Unknown classifier: {name}")
 
 
 def get_scores(model, X, n_classes: int) -> np.ndarray:
-    """回傳 (n, n_classes) 的分數矩陣（機率或決策函數）。"""
+    """Return a (n, n_classes) score matrix (probabilities or decision scores)."""
     if hasattr(model, "predict_proba"):
         return model.predict_proba(X)
     s = model.decision_function(X)
     if s.ndim == 1 and n_classes == 2:
-        # 二元分類特例：決策函數僅一欄，正類（類別 1）分數為 s，
-        # 負類（類別 0）以 -s 表示（OvR 視角）。
+        # Binary special case: decision function is one column; class 1 score
+        # is s, class 0 score is -s (one-vs-rest view).
         return np.column_stack([-s, s])
     if s.ndim == 1:
         return s.reshape(-1, 1)
@@ -270,7 +271,8 @@ def get_scores(model, X, n_classes: int) -> np.ndarray:
 
 
 def _onehot_target(y_true: np.ndarray, classes: list) -> np.ndarray:
-    """手動建構 one-hot 二元矩陣（避免 label_binarize 二元特例收縮為單欄）。"""
+    """Build a one-hot target matrix manually (avoids label_binarize's
+    binary collapse to a single column)."""
     classes_sorted = sorted(classes)
     y_bin = np.zeros((len(y_true), len(classes_sorted)))
     for i, c in enumerate(classes_sorted):
@@ -279,14 +281,15 @@ def _onehot_target(y_true: np.ndarray, classes: list) -> np.ndarray:
 
 
 def compute_auc(y_true: np.ndarray, scores: np.ndarray, classes: list) -> float:
-    """逐類別二元 ROC AUC 之 macro 平均（支援機率或決策函數分數）。"""
+    """Macro-average of per-class binary ROC AUC (works with probabilities
+    or decision scores)."""
     from sklearn.metrics import roc_auc_score as ras
 
     y_bin = _onehot_target(y_true, classes)
     aucs = []
     for i in range(y_bin.shape[1]):
         n_pos = int(y_bin[:, i].sum())
-        if n_pos == 0 or n_pos == len(y_bin):  # 該類別在測試集無樣本時略過
+        if n_pos == 0 or n_pos == len(y_bin):  # skip classes absent from the test set
             continue
         aucs.append(ras(y_bin[:, i], scores[:, i]))
     return float(np.mean(aucs))
@@ -294,7 +297,7 @@ def compute_auc(y_true: np.ndarray, scores: np.ndarray, classes: list) -> float:
 
 def evaluate(y_true: np.ndarray, y_pred: np.ndarray, scores: np.ndarray,
              classes: list) -> dict:
-    """計算 macro 平均的 Precision / Recall / F1 / AUC。"""
+    """Compute macro-averaged Precision / Recall / F1 / AUC."""
     from sklearn.metrics import precision_score, recall_score, f1_score
     return {
         "Precision": round(precision_score(y_true, y_pred, average="macro",
@@ -307,9 +310,9 @@ def evaluate(y_true: np.ndarray, y_pred: np.ndarray, scores: np.ndarray,
     }
 
 
-# ---------- 4. 圖表 ----------
+# ---------- 4. Charts ----------
 def macro_roc_curve(y_true: np.ndarray, scores: np.ndarray, classes: list):
-    """以各類別 ROC 插值平均出 macro 曲線。"""
+    """Macro-averaged ROC curve (interpolated mean over per-class curves)."""
     from sklearn.metrics import roc_curve, auc as roc_auc
 
     y_bin = _onehot_target(y_true, classes)
@@ -326,20 +329,32 @@ def macro_roc_curve(y_true: np.ndarray, scores: np.ndarray, classes: list):
     return fpr_grid, mean_tpr, roc_auc(fpr_grid, mean_tpr)
 
 
+def _auto_ylim(values, pad: float = 0.03):
+    """Data-driven y-axis limits (keeps charts readable across datasets with
+    very different F1 ranges)."""
+    vmin, vmax = float(np.min(values)), float(np.max(values))
+    lo = max(0.0, vmin - pad)
+    hi = min(1.0, vmax + pad)
+    if hi - lo < 0.05:  # keep a minimum visible range when values are close
+        mid = (lo + hi) / 2
+        lo, hi = mid - 0.025, mid + 0.025
+    return lo, hi
+
+
 def plot_class_distribution(df: pd.DataFrame, target: str, classes: list,
-                            save_path: Path):
-    """類別分布長條圖（含比例）。"""
+                            display: str, save_path: Path):
+    """Class-distribution bar chart (with proportions)."""
     counts = df[target].value_counts().reindex(classes)
     props = counts / counts.sum() * 100
     fig, ax = plt.subplots(figsize=(10, 6))
-    bars = ax.bar(range(len(counts)), counts.values, color="#4C72B0")
+    ax.bar(range(len(counts)), counts.values, color="#4C72B0")
     for i, (c, p) in enumerate(zip(counts.values, props.values)):
         ax.text(i, c, f"{p:.2f}%", ha="center", va="bottom", fontsize=10)
     ax.set_xticks(range(len(counts)))
     ax.set_xticklabels(counts.index, rotation=15, ha="right")
     ax.set_ylabel("Count")
     ax.set_xlabel("Class")
-    ax.set_title(f"Class Distribution in {target} with Proportions")
+    ax.set_title(f"Class Distribution in {display} with Proportions")
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
     fig.savefig(save_path)
@@ -347,7 +362,7 @@ def plot_class_distribution(df: pd.DataFrame, target: str, classes: list,
 
 
 def plot_roc_comparison(models, X_test, y_test, classes, title, save_path):
-    """多分類器 macro ROC 曲線比較圖。"""
+    """Macro ROC curve comparison for multiple classifiers."""
     fig, ax = plt.subplots(figsize=(9, 6.5))
     colors = ["#55A868", "#4C72B0", "#C44E52", "#8172B2"]
     for (name, model), color in zip(models.items(), colors):
@@ -367,22 +382,11 @@ def plot_roc_comparison(models, X_test, y_test, classes, title, save_path):
     plt.close(fig)
 
 
-def _auto_ylim(values, pad: float = 0.03):
-    """依資料範圍自動計算 Y 軸上下限（避免不同資料集 F1 差異造成圖表失真）。"""
-    vmin, vmax = float(np.min(values)), float(np.max(values))
-    lo = max(0.0, vmin - pad)
-    hi = min(1.0, vmax + pad)
-    if hi - lo < 0.05:  # 數值太接近時保留最小顯示範圍
-        mid = (lo + hi) / 2
-        lo, hi = mid - 0.025, mid + 0.025
-    return lo, hi
-
-
 def plot_f1_method_comparison(result_df: pd.DataFrame, save_path: Path):
-    """F1 分數比較折線圖（不同方法 × 分類器）。"""
+    """F1 line chart (methods x classifiers)."""
     fig, ax = plt.subplots(figsize=(9, 6))
-    palette = {"SMOTE": "#F0C419", "下採樣+最優化": "#E67E22",
-               "下採樣": "#C0392B", "最優化": "#E91E8C"}
+    palette = {"SMOTE": "#F0C419", "Undersampling+Optimized": "#E67E22",
+               "Undersampling": "#C0392B", "Optimized": "#E91E8C"}
     classifiers = CLASSIFIER_NAMES
     for key, label in METHOD_ORDER:
         sub = result_df[result_df["Method_Key"] == key]
@@ -390,7 +394,7 @@ def plot_f1_method_comparison(result_df: pd.DataFrame, save_path: Path):
         ax.plot(classifiers, sub["F1"], marker="o", lw=2, color=palette[label],
                 label=label)
     lo, hi = _auto_ylim(result_df["F1"].to_numpy(), pad=0.02)
-    if lo <= 0.85 <= hi:  # 參考線僅在可見範圍內時繪製
+    if lo <= 0.85 <= hi:  # reference line only when visible
         ax.axhline(0.85, ls="--", color="gray", lw=1, label="0.85 F1 Score")
     ax.set_ylabel("F1 Score")
     ax.set_xlabel("Classifiers")
@@ -404,14 +408,14 @@ def plot_f1_method_comparison(result_df: pd.DataFrame, save_path: Path):
 
 
 def plot_scheme_ab_comparison(df_ab: pd.DataFrame, save_path: Path):
-    """方案 A（僅對最多數組）vs 方案 B（對所有非最少組）長條圖。"""
+    """Scheme A (majority-only) vs Scheme B (all non-minority) bar chart."""
     fig, ax = plt.subplots(figsize=(9, 6))
     x = np.arange(len(df_ab))
     width = 0.36
-    ax.bar(x - width / 2, df_ab["SchemeA_F1"], width, label="方案A：僅對最多數組",
-           color="#4C72B0")
-    ax.bar(x + width / 2, df_ab["SchemeB_F1"], width, label="方案B：對所有非最少組",
-           color="#DD8452")
+    ax.bar(x - width / 2, df_ab["SchemeA_F1"], width,
+           label="Scheme A: majority-only", color="#4C72B0")
+    ax.bar(x + width / 2, df_ab["SchemeB_F1"], width,
+           label="Scheme B: all non-minority", color="#DD8452")
     for xi, v in zip(x - width / 2, df_ab["SchemeA_F1"]):
         ax.text(xi, v, f"{v:.3f}", ha="center", va="bottom", fontsize=9)
     for xi, v in zip(x + width / 2, df_ab["SchemeB_F1"]):
@@ -422,7 +426,7 @@ def plot_scheme_ab_comparison(df_ab: pd.DataFrame, save_path: Path):
     ax.set_ylim(*_auto_ylim(
         np.concatenate([df_ab["SchemeA_F1"].to_numpy(),
                         df_ab["SchemeB_F1"].to_numpy()]), pad=0.01))
-    ax.set_title("樣本最多的類別欠採樣與全部類別欠採樣比較表")
+    ax.set_title("Majority-Class Undersampling vs Full Undersampling (F1)")
     ax.legend()
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
@@ -431,7 +435,7 @@ def plot_scheme_ab_comparison(df_ab: pd.DataFrame, save_path: Path):
 
 
 def plot_ratio_analysis(df_ratio: pd.DataFrame, save_path: Path):
-    """不同欠採樣比例（1:1 ~ 1:5）F1 分析長條圖。"""
+    """F1 by majority-class undersampling ratio (1:1 ~ 1:5)."""
     fig, ax = plt.subplots(figsize=(9, 6))
     labels = [f"1:{r}" for r in df_ratio["Ratio"]]
     ax.bar(range(len(df_ratio)), df_ratio["F1"], color="#55A868")
@@ -441,18 +445,18 @@ def plot_ratio_analysis(df_ratio: pd.DataFrame, save_path: Path):
     ax.set_xticklabels(labels)
     ax.set_ylabel("F1")
     ax.set_ylim(*_auto_ylim(df_ratio["F1"].to_numpy(), pad=0.01))
-    ax.set_title("樣本最多的類別欠採樣比例分析表")
-    ax.set_xlabel("樣本最多的類別欠採樣比例")
+    ax.set_title("F1 Score by Majority-Class Undersampling Ratio")
+    ax.set_xlabel("Majority-class undersampling ratio (majority : minority)")
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
     fig.savefig(save_path)
     plt.close(fig)
 
 
-# ---------- 5. 實驗 ----------
+# ---------- 5. Experiments ----------
 def experiment_method_comparison(X_train, y_train, X_test, y_test,
                                  classes) -> pd.DataFrame:
-    """四種分類器 × 四種方法 的 Precision/Recall/F1/AUC 比較。"""
+    """4 classifiers x 4 methods: Precision/Recall/F1/AUC comparison."""
     rows = []
     for name in CLASSIFIER_NAMES:
         for key, label in METHOD_ORDER:
@@ -475,7 +479,7 @@ def experiment_method_comparison(X_train, y_train, X_test, y_test,
             dt = round(time.time() - t0, 1)
             rows.append({"Classifier": name, "Method_Key": key, "Method": label,
                          **m, "TrainSize": len(yr), "TimeSec": dt})
-            print(f"  [完成] {name:>14s} × {label:<8s}  "
+            print(f"  [Done] {name:>14s} x {label:<24s}  "
                   f"F1={m['F1']:.4f}  AUC={m['AUC']:.4f}  ({dt}s, train={len(yr)})")
     return pd.DataFrame(rows)
 
@@ -490,7 +494,7 @@ def fit_and_f1(name, Xr, yr, X_test, y_test, classes) -> float:
 
 
 def experiment_scheme_ab(X_train, y_train, X_test, y_test, classes) -> pd.DataFrame:
-    """最佳化參數下，方案 A vs 方案 B 的 F1 比較。"""
+    """F1 comparison between Scheme A and Scheme B (optimized parameters)."""
     rows = []
     for name in CLASSIFIER_NAMES:
         Xa, ya = scheme_a_undersample(X_train, y_train, ratio=1.0)
@@ -498,12 +502,12 @@ def experiment_scheme_ab(X_train, y_train, X_test, y_test, classes) -> pd.DataFr
         fa = fit_and_f1(name, Xa, ya, X_test, y_test, classes)
         fb = fit_and_f1(name, Xb, yb, X_test, y_test, classes)
         rows.append({"Classifier": name, "SchemeA_F1": fa, "SchemeB_F1": fb})
-        print(f"  [完成] {name:>14s}  方案A F1={fa:.4f}  方案B F1={fb:.4f}")
+        print(f"  [Done] {name:>14s}  SchemeA F1={fa:.4f}  SchemeB F1={fb:.4f}")
     return pd.DataFrame(rows)
 
 
 def experiment_ratio_analysis(X_train, y_train, X_test, y_test, classes) -> pd.DataFrame:
-    """XGBoost（最佳化）於不同欠採樣比例（1:1 ~ 1:5）的 F1。"""
+    """XGBoost (optimized) F1 across undersampling ratios 1:1 ~ 1:5."""
     from sklearn.metrics import f1_score
     rows = []
     counts = y_train.value_counts()
@@ -521,11 +525,12 @@ def experiment_ratio_analysis(X_train, y_train, X_test, y_test, classes) -> pd.D
                      "MinorityCount": n_min,
                      "MajorityTarget": target,
                      "F1": round(f1, 4)})
-        print(f"  [完成] 比例 1:{ratio}  多數組目標={target:>4d}  F1={f1:.4f}")
+        print(f"  [Done] ratio 1:{ratio}  majority-target={target:>4d}  "
+              f"F1={f1:.4f}")
     return pd.DataFrame(rows)
 
 
-# ---------- 6. 單一資料集流程 ----------
+# ---------- 6. Per-dataset pipeline ----------
 def run_pipeline(dataset_key: str) -> None:
     cfg = DATASET_REGISTRY[dataset_key]
     fig_dir = FIG_DIR / dataset_key
@@ -535,17 +540,17 @@ def run_pipeline(dataset_key: str) -> None:
 
     total_t0 = time.time()
     print("=" * 72)
-    print(f"{cfg['display']}  —  {cfg['domain']}")
+    print(f"{cfg['display']}  -  {cfg['domain']}")
     print("=" * 72)
 
-    # 1. 資料
+    # 1. Data
     df, target, classes = load_dataset(dataset_key)
-    print(f"[1/7] 資料載入完成：{df.shape[0]} 筆、{df.shape[1] - 1} 個特徵、"
-          f"{len(classes)} 個類別")
+    print(f"[1/7] Data loaded: {df.shape[0]} rows, {df.shape[1] - 1} features, "
+          f"{len(classes)} classes")
     for cls in classes:
-        print(f"      {str(cls):<20s} {int((df[target] == cls).sum()):>6d} 筆")
+        print(f"      {str(cls):<20s} {int((df[target] == cls).sum()):>6d} rows")
 
-    # 2. 分割
+    # 2. Train/test split
     from sklearn.model_selection import train_test_split
     X = df.drop(columns=[target])
     y = df[target]
@@ -555,38 +560,39 @@ def run_pipeline(dataset_key: str) -> None:
     y_train = y_train.reset_index(drop=True)
     X_test = X_test.reset_index(drop=True)
     y_test = y_test.reset_index(drop=True)
-    print(f"[2/7] 資料分割：訓練集 {len(X_train)}（80%）/ 測試集 {len(X_test)}（20%）")
+    print(f"[2/7] Split: train {len(X_train)} (80%) / test {len(X_test)} (20%)")
 
-    # 類別標籤轉為整數編碼 0 ~ n_classes-1（XGBoost 3.x 不接受字串標籤）
+    # Encode class labels to integers 0..n-1 (XGBoost 3.x rejects strings)
     from sklearn.preprocessing import LabelEncoder
     le = LabelEncoder().fit(y)
     y_train = pd.Series(le.transform(y_train), name="Class")
     y_test = pd.Series(le.transform(y_test), name="Class")
     classes_codes = list(range(len(classes)))
 
-    # 3. 標準化
+    # 3. Standardization
     from sklearn.preprocessing import StandardScaler
     scaler = StandardScaler().fit(X_train)
     X_train_s = pd.DataFrame(scaler.transform(X_train), columns=X_train.columns)
     X_test_s = pd.DataFrame(scaler.transform(X_test), columns=X_test.columns)
-    print("[3/7] 標準化完成（z = (x - μ) / σ，僅以訓練集擬合）")
+    print("[3/7] Standardization done (z = (x - mu) / sigma, fit on train only)")
 
-    # 4. 類別分布圖
-    plot_class_distribution(df, target, classes,
+    # 4. Class-distribution chart
+    plot_class_distribution(df, target, classes, cfg["display"],
                             fig_dir / "01_class_distribution.png")
     df[target].value_counts().reindex(classes).to_csv(
         result_dir / "class_distribution.csv", encoding="utf-8-sig")
-    print(f"[4/7] 類別分布圖 → {fig_dir.name}/01_class_distribution.png")
+    print(f"[4/7] Class distribution -> {fig_dir.name}/01_class_distribution.png")
 
-    # 5. 方法比較（四分類器 × 四方法）
-    print("[5/7] 方法比較：四種分類器 × 四種方法（SMOTE/下採樣/最優化/下採樣+最優化）...")
+    # 5. Method comparison (4 classifiers x 4 methods)
+    print("[5/7] Method comparison: 4 classifiers x 4 methods "
+          "(SMOTE/Undersampling/Optimized/Undersampling+Optimized) ...")
     res = experiment_method_comparison(X_train_s, y_train, X_test_s, y_test,
                                        classes_codes)
     res.to_csv(result_dir / "method_comparison_f1.csv", index=False,
                encoding="utf-8-sig")
 
-    # ROC 曲線比較
-    print("      繪製 ROC 曲線比較圖 ...")
+    # ROC curve comparison
+    print("      Plotting ROC curves ...")
     models_opt = {n: build_classifier(n, optimized=True) for n in CLASSIFIER_NAMES}
     for n, m in models_opt.items():
         m.fit(X_train_s, y_train)
@@ -607,50 +613,50 @@ def run_pipeline(dataset_key: str) -> None:
                         fig_dir / "03_roc_undersample_optimized.png")
 
     plot_f1_method_comparison(res, fig_dir / "04_f1_method_comparison.png")
-    print("      ROC 圖與 F1 比較圖已輸出至 figures/")
+    print("      ROC and F1 charts saved to figures/")
 
-    # 6. 方案 A vs 方案 B
-    print("[6/7] 方案比較：僅對最多數組（A）vs 對所有非最少組（B）...")
+    # 6. Scheme A vs Scheme B
+    print("[6/7] Scheme comparison: majority-only (A) vs all non-minority (B) ...")
     df_ab = experiment_scheme_ab(X_train_s, y_train, X_test_s, y_test,
                                  classes_codes)
     df_ab.to_csv(result_dir / "scheme_ab_comparison.csv", index=False,
                  encoding="utf-8-sig")
     plot_scheme_ab_comparison(df_ab, fig_dir / "05_scheme_ab_comparison.png")
 
-    # 7. 比例分析
-    print("[7/7] 比例分析：XGBoost 於欠採樣比例 1:1 ~ 1:5 ...")
+    # 7. Ratio analysis
+    print("[7/7] Ratio analysis: XGBoost at undersampling ratios 1:1 ~ 1:5 ...")
     df_ratio = experiment_ratio_analysis(X_train_s, y_train, X_test_s, y_test,
                                          classes_codes)
     df_ratio.to_csv(result_dir / "ratio_analysis.csv", index=False,
                     encoding="utf-8-sig")
     plot_ratio_analysis(df_ratio, fig_dir / "06_ratio_analysis.png")
 
-    # 摘要輸出
+    # Summary
     print("\n" + "=" * 72)
-    print(f"結果摘要：{cfg['display']}")
+    print(f"Summary: {cfg['display']}")
     print("=" * 72)
     pivot = res.pivot_table(index="Classifier", columns="Method", values="F1")
-    print("\nF1-Score 比較表：")
+    print("\nF1-Score comparison table:")
     print(pivot.to_string())
-    print("\n方案 A/B 比較（最佳化參數）：")
+    print("\nScheme A/B comparison (optimized parameters):")
     print(df_ab.to_string(index=False))
     best_ratio = df_ratio.loc[df_ratio["F1"].idxmax()]
-    print("\n比例分析（XGBoost 最佳化）：")
+    print("\nRatio analysis (XGBoost optimized):")
     print(df_ratio.to_string(index=False))
-    print(f"\n最佳比例：1:{best_ratio['Ratio']}（F1 = {best_ratio['F1']}）")
-    print(f"耗時 {time.time() - total_t0:.0f} 秒。")
-    print(f"圖表目錄：{fig_dir}")
-    print(f"結果目錄：{result_dir}")
+    print(f"\nBest ratio: 1:{best_ratio['Ratio']} (F1 = {best_ratio['F1']})")
+    print(f"Elapsed: {time.time() - total_t0:.0f} seconds.")
+    print(f"Figures directory: {fig_dir}")
+    print(f"Results directory: {result_dir}")
     print()
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description="欠採樣於不平衡分類分析（支援多資料集）")
+        description="Undersampling for imbalanced classification (multi-dataset)")
     parser.add_argument("--dataset", nargs="+",
                         choices=list(DATASET_REGISTRY.keys()),
                         default=list(DATASET_REGISTRY.keys()),
-                        help="指定資料集（預設執行全部）")
+                        help="datasets to run (default: all)")
     args = parser.parse_args()
     for key in args.dataset:
         run_pipeline(key)

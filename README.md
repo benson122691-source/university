@@ -1,9 +1,9 @@
 # University Projects
 
-大學課程專案與畢業專題程式碼整理。
+A collection of university course and research projects.
 
-## 專案列表
+## Projects
 
-| 專案 | 說明 |
+| Project | Description |
 |---|---|
-| [dry-bean-undersampling](./dry-bean-undersampling) | 畢業專題：欠採樣於不平衡分類分析（Dry Bean Dataset，KNN / Random Forest / SVM / XGBoost） |
+| [dry-bean-undersampling](./dry-bean-undersampling) | Undersampling for imbalanced classification (Dry Bean / Credit Card datasets; KNN, Random Forest, SVM, XGBoost) |
