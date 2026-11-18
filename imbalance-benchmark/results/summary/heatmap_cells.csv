@@ -1,0 +1,29 @@
+dataset,display,ir,metric,strategy,mean_diff,better,tie,worse
+bank_marketing,Bank Marketing,7.8767,pr_auc,class_weight,-0.0024,0,2,1
+bank_marketing,Bank Marketing,7.8767,pr_auc,random_under,-0.0116,0,3,1
+bank_marketing,Bank Marketing,7.8767,pr_auc,smote,-0.0326,0,0,4
+bank_marketing,Bank Marketing,7.8767,pr_auc,tomek,-0.0003,0,4,0
+credit_card,Taiwan Credit Card Default,3.5208,pr_auc,class_weight,-0.0006,0,2,1
+credit_card,Taiwan Credit Card Default,3.5208,pr_auc,random_under,-0.0061,0,3,1
+credit_card,Taiwan Credit Card Default,3.5208,pr_auc,smote,-0.0111,0,2,2
+credit_card,Taiwan Credit Card Default,3.5208,pr_auc,tomek,-0.001,0,4,0
+dry_bean,Dry Bean,6.7931,f1_macro,class_weight,-0.0015,0,3,0
+dry_bean,Dry Bean,6.7931,f1_macro,random_under,-0.0078,0,0,4
+dry_bean,Dry Bean,6.7931,f1_macro,smote,-0.0015,0,4,0
+dry_bean,Dry Bean,6.7931,f1_macro,tomek,-0.0008,0,4,0
+german_credit,German Credit,2.3333,pr_auc,class_weight,0.0019,0,3,0
+german_credit,German Credit,2.3333,pr_auc,random_under,-0.027,0,4,0
+german_credit,German Credit,2.3333,pr_auc,smote,-0.0036,0,4,0
+german_credit,German Credit,2.3333,pr_auc,tomek,-0.0047,0,4,0
+mammography,Mammography,42.0115,pr_auc,class_weight,-0.0423,0,3,0
+mammography,Mammography,42.0115,pr_auc,random_under,-0.1254,0,3,1
+mammography,Mammography,42.0115,pr_auc,smote,-0.0586,0,4,0
+mammography,Mammography,42.0115,pr_auc,tomek,0.0012,0,4,0
+page_blocks,Page Blocks,175.4643,f1_macro,class_weight,-0.0321,0,2,1
+page_blocks,Page Blocks,175.4643,f1_macro,random_under,-0.2428,0,0,4
+page_blocks,Page Blocks,175.4643,f1_macro,smote,-0.0263,0,4,0
+page_blocks,Page Blocks,175.4643,f1_macro,tomek,-0.004,0,4,0
+yeast,Yeast,92.6,f1_macro,class_weight,0.019,0,3,0
+yeast,Yeast,92.6,f1_macro,random_under,-0.2272,0,0,4
+yeast,Yeast,92.6,f1_macro,smote,-0.0175,0,4,0
+yeast,Yeast,92.6,f1_macro,tomek,0.0004,0,4,0

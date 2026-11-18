@@ -239,3 +239,45 @@ def ir_small_multiples(ir_scores: pd.DataFrame, metrics: list[str], title: str, 
     fig.suptitle(title, fontweight="bold", color=TEXT)
     fig.tight_layout()
     _save(fig, path)
+
+
+def summary_heatmap(cells: pd.DataFrame, title: str, path: Path) -> None:
+    """
+    跨資料集總覽：列 = 資料集（依不平衡比排序），欄 = 策略。
+    顏色 = 各模型「策略 − none」差異的平均（藍 = 比較好、紅 = 比較差、灰白 = 差不多）；
+    格子裡的文字 = 平均差異，以及「顯著較好 / 無差異 / 顯著較差」的模型數。
+    """
+    from matplotlib.colors import LinearSegmentedColormap, TwoSlopeNorm
+
+    rows = cells.drop_duplicates("dataset").sort_values("ir")
+    datasets = rows.dataset.tolist()
+    labels = [f"{d}\n{m}, IR {ir:.0f}" for d, m, ir in zip(rows.display, rows.metric, rows.ir, strict=True)]
+    strategies = [s for s in STRATEGY_COLORS if s in cells.strategy.unique()]
+    grid = cells.pivot(index="dataset", columns="strategy", values="mean_diff").reindex(
+        index=datasets, columns=strategies)
+
+    lim = float(np.nanmax(np.abs(grid.to_numpy()))) or 1.0
+    # 發散色階：紅（較差）— 灰白（0）— 藍（較好）
+    cmap = LinearSegmentedColormap.from_list("div", ["#c23b3a", "#f4f3f0", "#2a78d6"])
+    fig, ax = plt.subplots(figsize=(2.0 * len(strategies) + 2.6, 0.85 * len(datasets) + 1.6))
+    ax.imshow(grid.to_numpy(), cmap=cmap, norm=TwoSlopeNorm(0, -lim, lim), aspect="auto")
+    for i, d in enumerate(datasets):
+        for j, s in enumerate(strategies):
+            r = cells[(cells.dataset == d) & (cells.strategy == s)]
+            if r.empty:
+                continue
+            r = r.iloc[0]
+            ax.text(j, i, f"{r.mean_diff:+.3f}\n{r.better:.0f} / {r.tie:.0f} / {r.worse:.0f}",
+                    ha="center", va="center", fontsize=8.5, color=TEXT)
+    ax.set_xticks(range(len(strategies)), [STRATEGY_LABEL[s] for s in strategies], fontsize=9)
+    ax.set_yticks(range(len(datasets)), labels, fontsize=8.5)
+    ax.tick_params(length=0)
+    ax.grid(False)
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+    ax.set_title(title)
+    ax.text(0.0, -0.9 / (0.85 * len(datasets) + 1.6),
+            "cell: mean Δ vs. no handling (averaged over models) · counts = models significantly "
+            "better / no sig. diff / significantly worse (Holm-corrected)",
+            transform=ax.transAxes, fontsize=8, color=TEXT_2, va="top")
+    _save(fig, path)

@@ -4,25 +4,20 @@
 
 每一個「模型 × 策略」組合都被組成同一種 4 步驟 Pipeline：
 
-    原始特徵
-      │
-      ▼
     ① scale   ：數值欄標準化 (z-score)，類別欄原封不動
-      │
-      ▼
-    ② sampler ：重採樣（只在 fit 時執行；predict 時自動跳過）
-      │
-      ▼
-    ③ encode  ：類別欄 one-hot 編碼
-      │
-      ▼
+    ② encode  ：類別欄 one-hot 編碼
+    ③ sampler ：重採樣（只在 fit 時執行；predict 時自動跳過）
     ④ model   ：分類器
 
-為什麼順序是「先標準化 → 重採樣 → 再 one-hot」？
-- SMOTE / Tomek 都靠「距離」找鄰居。沒標準化的話，信用額度 (LIMIT_BAL，數十萬)
-  會完全主宰距離，年齡、繳款狀態幾乎沒影響 → 所以要先標準化。
-- SMOTENC 需要知道哪幾欄是類別，而且類別欄要維持「代碼」形式，
-  所以 one-hot 必須放在重採樣之後。
+唯一的例外是 SMOTENC：順序變成 ① → ③ → ② → ④（先重採樣、再 one-hot）。
+
+為什麼這樣排？
+- SMOTE / Tomek 都靠「距離」找鄰居。沒標準化的話，金額類欄位（數十萬）
+  會完全主宰距離 → 所以第一步一定是標準化。
+- Tomek 用歐氏距離找「互為最近鄰」的樣本。如果直接拿類別代碼算距離，
+  「職業代碼 1 和 11」會被當成差很遠，這沒有意義 → 所以 Tomek / 欠採樣放在 one-hot 之後。
+- SMOTENC 自己知道哪幾欄是類別，會對類別欄用「鄰居中最常見的類別」，
+  而且它需要類別欄維持「代碼」形式 → 所以 SMOTENC 放在 one-hot 之前。
 
 為什麼一定要用 Pipeline？
 因為交叉驗證時，scaler 的平均數/標準差、sampler 的抽樣，都必須「只看訓練折」。
@@ -80,10 +75,14 @@ def build_pipeline(ds: Dataset, model: str, strategy: str, seed: int,
     # ④ 分類器；strategy == "class_weight" 時開啟類別加權
     clf = build_model(model, class_weight=(strategy == "class_weight"), seed=seed, n_jobs=n_jobs)
 
-    steps = [("scale", scale)]
-    if sampler is not None:
-        steps.append(("sampler", sampler))
-    steps += [("encode", encode), ("model", clf)]
+    if sampler is not None and strategy == "smote" and n_cat:
+        # SMOTENC：先重採樣（類別欄還是代碼），再 one-hot
+        steps = [("scale", scale), ("sampler", sampler), ("encode", encode), ("model", clf)]
+    elif sampler is not None:
+        # 其他 sampler：先 one-hot，距離計算才有意義
+        steps = [("scale", scale), ("encode", encode), ("sampler", sampler), ("model", clf)]
+    else:
+        steps = [("scale", scale), ("encode", encode), ("model", clf)]
 
     pipe = Pipeline(steps)
     if params:

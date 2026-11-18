@@ -1,0 +1,9 @@
+{
+  "statistic": 22.0533333333334,
+  "p": 0.00019558015547438035,
+  "models": [
+    "logreg",
+    "random_forest",
+    "xgboost"
+  ]
+}

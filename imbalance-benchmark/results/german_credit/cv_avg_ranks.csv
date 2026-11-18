@@ -1,0 +1,6 @@
+strategy,avg_rank,rank_std
+class_weight,2.4,1.2758
+none,2.4333,1.2507
+smote,2.9667,1.6291
+tomek,3.1333,1.008
+random_under,4.0667,1.2576

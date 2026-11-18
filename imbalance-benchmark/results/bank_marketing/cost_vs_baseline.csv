@@ -1,0 +1,56 @@
+model,strategy,policy,cost,baseline_cost,diff,ci_low,ci_high,verdict
+logreg,none,default,0.4506,0.3077,0.1429,0.1191,0.1679,costlier
+logreg,none,bayes,0.3082,0.3077,0.0005,-0.0025,0.0032,no clear diff
+logreg,class_weight,default,0.3247,0.3077,0.017,0.0092,0.0243,costlier
+logreg,class_weight,bayes,0.8672,0.3077,0.5595,0.5318,0.5853,costlier
+logreg,class_weight,tuned,0.3092,0.3077,0.0015,-0.0019,0.0046,no clear diff
+logreg,random_under,default,0.3268,0.3077,0.0191,0.0112,0.0268,costlier
+logreg,random_under,bayes,0.8602,0.3077,0.5524,0.5243,0.5785,costlier
+logreg,random_under,tuned,0.3165,0.3077,0.0087,0.0045,0.0125,costlier
+logreg,tomek,default,0.4365,0.3077,0.1288,0.1065,0.1519,costlier
+logreg,tomek,bayes,0.3089,0.3077,0.0012,-0.0032,0.0052,no clear diff
+logreg,tomek,tuned,0.3081,0.3077,0.0004,-0.0025,0.0027,no clear diff
+logreg,smote,default,0.3604,0.3077,0.0527,0.0393,0.0649,costlier
+logreg,smote,bayes,0.7306,0.3077,0.4229,0.398,0.4468,costlier
+logreg,smote,tuned,0.3339,0.3077,0.0262,0.0144,0.038,costlier
+knn,none,default,0.4412,0.3077,0.1335,0.1095,0.1568,costlier
+knn,none,bayes,0.3077,0.3077,0.0,0.0,0.0,no clear diff
+knn,random_under,default,0.3281,0.3077,0.0204,0.0115,0.029,costlier
+knn,random_under,bayes,0.8389,0.3077,0.5312,0.5052,0.5563,costlier
+knn,random_under,tuned,0.3099,0.3077,0.0022,-0.0042,0.0086,no clear diff
+knn,tomek,default,0.4283,0.3077,0.1205,0.0977,0.144,costlier
+knn,tomek,bayes,0.3091,0.3077,0.0013,-0.0021,0.0042,no clear diff
+knn,tomek,tuned,0.3091,0.3077,0.0013,-0.0021,0.0042,no clear diff
+knn,smote,default,0.4081,0.3077,0.1004,0.0853,0.1158,costlier
+knn,smote,bayes,0.7481,0.3077,0.4404,0.4155,0.4648,costlier
+knn,smote,tuned,0.3184,0.3077,0.0107,0.0008,0.02,costlier
+random_forest,none,default,0.4309,0.2968,0.1341,0.1113,0.1562,costlier
+random_forest,none,bayes,0.2975,0.2968,0.0007,-0.0025,0.0045,no clear diff
+random_forest,class_weight,default,0.3134,0.2968,0.0166,0.0081,0.0245,costlier
+random_forest,class_weight,bayes,0.8248,0.2968,0.528,0.5017,0.5551,costlier
+random_forest,class_weight,tuned,0.2976,0.2968,0.0008,-0.004,0.0059,no clear diff
+random_forest,random_under,default,0.3139,0.2968,0.0171,0.0087,0.0254,costlier
+random_forest,random_under,bayes,0.829,0.2968,0.5322,0.5044,0.559,costlier
+random_forest,random_under,tuned,0.3052,0.2968,0.0084,0.001,0.0161,costlier
+random_forest,tomek,default,0.4147,0.2968,0.1179,0.0964,0.1385,costlier
+random_forest,tomek,bayes,0.2981,0.2968,0.0013,-0.0018,0.0049,no clear diff
+random_forest,tomek,tuned,0.2973,0.2968,0.0005,-0.0019,0.0032,no clear diff
+random_forest,smote,default,0.3082,0.2968,0.0114,0.0021,0.0205,costlier
+random_forest,smote,bayes,0.7042,0.2968,0.4074,0.3815,0.4328,costlier
+random_forest,smote,tuned,0.3059,0.2968,0.0091,0.0007,0.0177,costlier
+xgboost,none,default,0.4232,0.2966,0.1266,0.1039,0.1482,costlier
+xgboost,none,bayes,0.2966,0.2966,0.0,0.0,0.0,no clear diff
+xgboost,class_weight,default,0.3065,0.2966,0.01,0.0024,0.0176,costlier
+xgboost,class_weight,bayes,0.7974,0.2966,0.5008,0.4738,0.5274,costlier
+xgboost,class_weight,tuned,0.2966,0.2966,0.0,-0.0036,0.0035,no clear diff
+xgboost,random_under,default,0.3144,0.2966,0.0178,0.0089,0.0267,costlier
+xgboost,random_under,bayes,0.8086,0.2966,0.512,0.4849,0.5378,costlier
+xgboost,random_under,tuned,0.2992,0.2966,0.0027,-0.0035,0.0092,no clear diff
+xgboost,tomek,default,0.4041,0.2966,0.1076,0.0859,0.1284,costlier
+xgboost,tomek,bayes,0.297,0.2966,0.0005,-0.0026,0.003,no clear diff
+xgboost,tomek,tuned,0.2969,0.2966,0.0004,-0.0034,0.0045,no clear diff
+xgboost,smote,default,0.3214,0.2966,0.0249,0.013,0.037,costlier
+xgboost,smote,bayes,0.4842,0.2966,0.1877,0.1695,0.2047,costlier
+xgboost,smote,tuned,0.3095,0.2966,0.013,0.0035,0.0228,costlier
+balanced_rf,none,default,0.3108,0.2978,0.013,0.0049,0.0209,costlier
+balanced_rf,none,bayes,0.8328,0.2978,0.5351,0.5074,0.5624,costlier

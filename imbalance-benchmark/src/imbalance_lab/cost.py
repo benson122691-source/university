@@ -129,3 +129,55 @@ def sensitivity(oof: dict, test_proba: dict, y_train: np.ndarray, y_test: np.nda
         t = t[t.policy == policy].assign(cost_ratio=r)
         frames.append(t)
     return pd.concat(frames, ignore_index=True)
+
+
+def cost_vs_baseline(oof: dict, test_proba: dict, y_train: np.ndarray, y_test: np.ndarray,
+                     c_fn: float, c_fp: float, baseline: tuple[str, str] = ("none", "tuned"),
+                     n_boot: int = 2000, seed: int = 0) -> pd.DataFrame:
+    """
+    每個 (模型, 策略, 門檻規則) 的 test 成本，與「同一模型 + none + tuned 門檻」比較，
+    並用「配對 bootstrap」算 95% 信賴區間。
+
+    為什麼需要？test set 只做一次評估，成本差 0.03 可能只是幾筆樣本的差別。
+    German Credit 的 test set 只有 200 筆 —— 沒有信賴區間，就無法分辨真差異和運氣。
+
+    配對 bootstrap 做法：
+    1. 從 test set 有放回地抽 n 筆（同一組索引同時套用在兩個方法上 → 「配對」）
+    2. 計算兩個方法在這組樣本上的平均成本差
+    3. 重複 2000 次，取第 2.5 與 97.5 百分位數 = 95% 信賴區間
+    區間不包含 0 → 差異大致可信；包含 0 → 跟 baseline 分不出高下。
+    門檻是在訓練集 OOF 上選好的，bootstrap 時固定不變（test 不參與選門檻）。
+    """
+    rng = np.random.default_rng(seed)
+    n = len(y_test)
+    boot_idx = rng.integers(0, n, size=(n_boot, n))  # 每一列是一次 bootstrap 抽樣
+
+    def per_sample_cost(p, t):
+        """每一位申請人各自的成本（0、C_FP 或 C_FN）。"""
+        reject = p >= t
+        return np.where((y_test == 1) & ~reject, c_fn, 0.0) + np.where((y_test == 0) & reject, c_fp, 0.0)
+
+    thresholds = {}
+    for key in test_proba:
+        thresholds[(key, "default")] = 0.5
+        thresholds[(key, "bayes")] = bayes_threshold(c_fn, c_fp)
+        thresholds[(key, "tuned")] = optimal_threshold(y_train, oof[key][:, 1], c_fn, c_fp)
+
+    rows = []
+    for (model, strategy), proba in test_proba.items():
+        base_key = (model, baseline[0])
+        if base_key not in test_proba:
+            continue
+        base = per_sample_cost(test_proba[base_key][:, 1], thresholds[(base_key, baseline[1])])
+        for policy in ("default", "bayes", "tuned"):
+            if (strategy, policy) == baseline:
+                continue
+            this = per_sample_cost(proba[:, 1], thresholds[((model, strategy), policy)])
+            d = this - base
+            boots = d[boot_idx].mean(axis=1)
+            lo, hi = np.percentile(boots, [2.5, 97.5])
+            rows.append({"model": model, "strategy": strategy, "policy": policy,
+                         "cost": this.mean(), "baseline_cost": base.mean(), "diff": d.mean(),
+                         "ci_low": lo, "ci_high": hi,
+                         "verdict": "cheaper" if hi < 0 else ("costlier" if lo > 0 else "no clear diff")})
+    return pd.DataFrame(rows)

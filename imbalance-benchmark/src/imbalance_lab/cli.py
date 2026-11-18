@@ -9,8 +9,8 @@
     imbalance-lab run --config configs/quick.yaml      # 換一份設定（例如快速版）
 
 階段 (stages)：
-    tune → cv → stats → test → cost → ir
-    （stats 只重新分析已存好的 CV 分數，不重新訓練）
+    tune → cv → stats → test → cost → ir → summary
+    （stats 只重新分析已存好的 CV 分數；summary 彙整所有資料集；兩者都不重新訓練）
 每個階段的輸出都存成檔案，後面的階段直接讀檔，
 所以改了成本假設只要重跑 cost，不用重新訓練所有模型。
 
@@ -31,14 +31,14 @@ import pandas as pd
 import yaml
 
 from . import cost as cost_mod
-from . import plots
+from . import decision, plots
 from .data import load_dataset
 from .experiments import evaluate_test, run_cv, run_ir_experiment, split_train_test, tune
 from .metrics import PRIMARY_METRIC
 from .stats import average_ranks, compare_to_baseline
 
 ROOT = Path(__file__).resolve().parents[2]  # 專案根目錄
-ALL_STAGES = ["tune", "cv", "stats", "test", "cost", "ir"]
+ALL_STAGES = ["tune", "cv", "stats", "test", "cost", "ir", "summary"]
 
 
 # ---------------------------------------------------------------------------
@@ -105,6 +105,13 @@ def run_dataset(key: str, cfg: dict, stages: list[str], n_jobs: int) -> None:
                             f"{ds.display}: XGBoost precision-recall on test set",
                             fig_dir / "04_pr_curves_xgboost.png")
 
+    # ---- 階段 4（多分類版）：決策規則分析 —— 先驗修正 vs. 重採樣 ----
+    if "cost" in stages and ds.task == "multiclass":
+        oof = _load_proba(res_dir / "oof_proba.npz")
+        table = decision.decision_rule_table(oof, train.y, seed=seed)
+        _fmt_csv(table, res_dir / "decision_rule.csv")
+        print(table.round(3).to_string(index=False))
+
     # ---- 階段 4：成本分析（只有二分類有意義）----
     if "cost" in stages and ds.task == "binary":
         oof = _load_proba(res_dir / "oof_proba.npz")
@@ -112,6 +119,9 @@ def run_dataset(key: str, cfg: dict, stages: list[str], n_jobs: int) -> None:
         c = cfg["cost"]
         costs = cost_mod.cost_table(oof, test_proba, train.y, test.y, c["fn"], c["fp"])
         _fmt_csv(costs, res_dir / "cost_policies.csv")
+        # 跟「none + tuned 門檻」比較，附 bootstrap 95% 信賴區間
+        cvb = cost_mod.cost_vs_baseline(oof, test_proba, train.y, test.y, c["fn"], c["fp"], seed=seed)
+        _fmt_csv(cvb, res_dir / "cost_vs_baseline.csv")
         sens = cost_mod.sensitivity(oof, test_proba, train.y, test.y, c["ratios"], c["fp"])
         _fmt_csv(sens, res_dir / "cost_sensitivity.csv")
 
@@ -193,6 +203,94 @@ def run_ir(cfg: dict, n_jobs: int) -> None:
                              fig_dir / "ir_small_multiples.png")
 
 
+def summarize() -> None:
+    """
+    跨資料集總結：讀取 results/ 底下「每一份」資料集的結果，回答：
+    這些策略相對於「什麼都不做」，在多少個 (資料集 × 模型) 上顯著較好 / 沒差 / 顯著較差？
+
+    只讀檔、不訓練，所以任何時候都可以重跑：imbalance-lab run --stages summary
+    """
+    from .data import SPECS
+
+    out_res, out_fig = ROOT / "results" / "summary", ROOT / "figures" / "summary"
+    out_res.mkdir(parents=True, exist_ok=True)
+    keys = [k for k in SPECS if (ROOT / "results" / k / "cv_vs_baseline.csv").exists()]
+
+    rows, info = [], []
+    for k in keys:
+        ds = load_dataset(k)
+        info.append({"dataset": k, "display": ds.display, "task": ds.task, "n": len(ds.y),
+                     "features": ds.X.shape[1], "classes": len(ds.class_names),
+                     "ir": ds.imbalance_ratio, "minority_n": int(np.bincount(ds.y).min())})
+        # cv_vs_baseline.csv 裡有：主要指標、(二分類) f1 與 f1_best、(多分類) min_recall
+        rows.append(pd.read_csv(ROOT / "results" / k / "cv_vs_baseline.csv").assign(dataset=k))
+    info = pd.DataFrame(info)
+    _fmt_csv(info, out_res / "datasets.csv")
+    comp = pd.concat(rows, ignore_index=True).merge(info[["dataset", "display", "ir", "task"]], on="dataset")
+    _fmt_csv(comp, out_res / "all_vs_baseline.csv")
+
+    # 1) 勝 / 平 / 負 統計：依「指標種類」分開
+    def kind(r):
+        if r.metric in ("pr_auc", "f1_macro"):
+            return "primary (threshold-free)"
+        if r.metric in ("f1_best", "min_recall"):
+            return "secondary (threshold-free)" if r.metric == "f1_best" else "worst-class recall"
+        return "F1 at threshold 0.5"
+
+    comp["kind"] = comp.apply(kind, axis=1)
+    wtl = (comp.groupby(["kind", "strategy"]).verdict.value_counts().unstack(fill_value=0)
+           .reindex(columns=["better", "no sig. diff", "worse"], fill_value=0).reset_index())
+    _fmt_csv(wtl, out_res / "win_tie_loss.csv")
+    print("\n[summary] wins / ties / losses vs. no handling:")
+    print(wtl.to_string(index=False))
+
+    # 2) 熱圖：主要指標，每格 = 各模型平均差異 + 勝平負數
+    prim = comp[comp.metric.isin(["pr_auc", "f1_macro"])]
+    cells = (prim.groupby(["dataset", "display", "ir", "metric", "strategy"])
+             .agg(mean_diff=("diff", "mean"),
+                  better=("verdict", lambda v: (v == "better").sum()),
+                  tie=("verdict", lambda v: (v == "no sig. diff").sum()),
+                  worse=("verdict", lambda v: (v == "worse").sum()))
+             .reset_index())
+    _fmt_csv(cells, out_res / "heatmap_cells.csv")
+    plots.summary_heatmap(cells, "Across 7 datasets: does any strategy beat doing nothing?",
+                          out_fig / "summary_heatmap.png")
+
+    # 3) 成本 & 校準（只有二分類資料有）：XGBoost，test set
+    cost_rows, brier_rows = [], []
+    for k in keys:
+        f = ROOT / "results" / k / "cost_policies.csv"
+        if f.exists():
+            c = pd.read_csv(f)
+            c = c[c.model == "xgboost"].assign(dataset=k)
+            cost_rows.append(c)
+        f = ROOT / "results" / k / "calibration_brier.json"
+        if f.exists():
+            brier_rows.append({"dataset": k, **json.loads(f.read_text())})
+    if cost_rows:
+        cost = pd.concat(cost_rows)
+        pivot = cost.pivot_table(index=["dataset", "strategy"], columns="policy",
+                                 values="savings_vs_approve_all").reset_index()
+        _fmt_csv(pivot, out_res / "cost_savings_xgboost.csv")
+        rej = cost[cost.policy == "bayes"].pivot_table(index="dataset", columns="strategy",
+                                                       values="reject_rate").reset_index()
+        _fmt_csv(rej, out_res / "bayes_threshold_reject_rate_xgboost.csv")
+    if brier_rows:
+        _fmt_csv(pd.DataFrame(brier_rows), out_res / "calibration_brier_xgboost.csv")
+
+    # 4) 成本差異的 bootstrap 結論：所有模型 × 策略，跟 none + tuned 門檻比
+    cvb = [pd.read_csv(ROOT / "results" / k / "cost_vs_baseline.csv").assign(dataset=k)
+           for k in keys if (ROOT / "results" / k / "cost_vs_baseline.csv").exists()]
+    if cvb:
+        cvb = pd.concat(cvb, ignore_index=True)
+        _fmt_csv(cvb, out_res / "cost_vs_baseline_all.csv")
+        table = (cvb.groupby(["policy", "strategy"]).verdict.value_counts().unstack(fill_value=0)
+                 .reindex(columns=["cheaper", "no clear diff", "costlier"], fill_value=0).reset_index())
+        _fmt_csv(table, out_res / "cost_win_tie_loss.csv")
+        print("\n[summary] test-set cost vs. none + tuned threshold (bootstrap 95% CI):")
+        print(table.to_string(index=False))
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(prog="imbalance-lab", description=__doc__,
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -206,12 +304,14 @@ def main(argv: list[str] | None = None) -> None:
 
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
     t0 = time.time()
-    per_dataset = [s for s in args.stages if s != "ir"]
+    per_dataset = [s for s in args.stages if s not in ("ir", "summary")]
     if per_dataset:
         for key in args.dataset or cfg["datasets"]:
             run_dataset(key, cfg, per_dataset, args.n_jobs)
-    if "ir" in args.stages:
+    if "ir" in args.stages and "ir_experiment" in cfg:  # 驗證用設定檔沒有 IR 實驗
         run_ir(cfg, args.n_jobs)
+    if "summary" in args.stages:
+        summarize()
     print(f"\nDone in {(time.time() - t0) / 60:.1f} min.")
 
 

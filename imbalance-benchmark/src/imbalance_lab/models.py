@@ -50,6 +50,22 @@ class BalancedXGBClassifier(XGBClassifier):
         return super().fit(X, y, **kwargs)
 
 
+class SafeKNeighborsClassifier(KNeighborsClassifier):
+    """
+    鄰居數超過訓練筆數時自動縮小的 KNN。
+
+    為什麼需要？Yeast 有 10 類、最小類只有 3 筆（在訓練折裡），
+    隨機欠採樣會把每一類都砍到 3 筆 → 只剩 30 筆訓練資料，
+    但調參選出的 n_neighbors 可能是 34 → 原本的 KNN 會直接報錯。
+    這裡在「找鄰居」時把 k 限制在訓練筆數以內，設定值本身不會被改動。
+    """
+
+    def kneighbors(self, X=None, n_neighbors=None, return_distance=True):
+        k = n_neighbors or self.n_neighbors
+        k = min(k, self.n_samples_fit_ - (1 if X is None else 0))  # X=None 時不含自己
+        return super().kneighbors(X, n_neighbors=k, return_distance=return_distance)
+
+
 def is_compatible(model: str, strategy: str) -> bool:
     """
     判斷「模型 × 策略」這個組合是否有意義，不合理的組合直接跳過：
@@ -74,7 +90,7 @@ def build_model(model: str, class_weight: bool, seed: int, n_jobs: int = 1):
     if model == "logreg":
         return LogisticRegression(max_iter=3000, class_weight=cw)
     if model == "knn":
-        return KNeighborsClassifier(n_neighbors=15, n_jobs=n_jobs)
+        return SafeKNeighborsClassifier(n_neighbors=15, n_jobs=n_jobs)
     if model == "random_forest":
         return RandomForestClassifier(n_estimators=200, class_weight=cw,
                                       random_state=seed, n_jobs=n_jobs)

@@ -30,7 +30,7 @@ def test_sampler_only_sees_training_fold(binary_ds):
     """
     SpySampler.seen_sizes = []
     pipe = build_pipeline(binary_ds, "logreg", "random_under", seed=0)
-    pipe.steps[1] = ("sampler", SpySampler(random_state=0))  # 把真的 sampler 換成間諜
+    pipe.set_params(sampler=SpySampler(random_state=0))  # 把真的 sampler 換成間諜
 
     for tr, va in StratifiedKFold(4, shuffle=True, random_state=0).split(binary_ds.X, binary_ds.y):
         pipe.fit(binary_ds.X.iloc[tr], binary_ds.y[tr])
@@ -85,3 +85,36 @@ def test_run_cv_produces_paired_folds_and_complete_oof(binary_ds):
     # OOF：每一筆資料都要有預測
     for proba in oof.values():
         assert not np.isnan(proba).any()
+
+
+def test_step_order_depends_on_sampler(binary_ds):
+    """SMOTENC 要在 one-hot 之前（需要類別代碼）；其他 sampler 要在 one-hot 之後（距離才有意義）。"""
+    names = lambda s: [n for n, _ in build_pipeline(binary_ds, "logreg", s, 0).steps]  # noqa: E731
+    assert names("smote") == ["scale", "sampler", "encode", "model"]
+    assert names("tomek") == ["scale", "encode", "sampler", "model"]
+    assert names("random_under") == ["scale", "encode", "sampler", "model"]
+    assert names("none") == ["scale", "encode", "model"]
+
+
+def test_smote_handles_tiny_classes():
+    """最小類別只有 3 筆時（Yeast 的 ERL 就會這樣），SMOTE 要自動把 k 降低而不是報錯。"""
+    import pandas as pd
+
+    from imbalance_lab.data import Dataset
+    rng = np.random.default_rng(0)
+    y = np.array([0] * 100 + [1] * 30 + [2] * 3)
+    X = pd.DataFrame(rng.normal(size=(len(y), 4)) + y[:, None], columns=list("abcd"))
+    ds = Dataset(key="tiny", display="tiny", X=X, y=y, class_names=["a", "b", "c"])
+    pipe = build_pipeline(ds, "logreg", "smote", seed=0).fit(ds.X, ds.y)
+    assert pipe.named_steps["sampler"].k_neighbors == 5, "設定值不應被永久改掉"
+    assert pipe.predict_proba(ds.X).shape == (len(y), 3)
+
+
+def test_knn_survives_more_neighbors_than_samples():
+    """欠採樣後訓練資料可能比 n_neighbors 還少，KNN 要自動縮小 k 而不是報錯。"""
+    from imbalance_lab.models import build_model
+    rng = np.random.default_rng(0)
+    knn = build_model("knn", class_weight=False, seed=0).set_params(n_neighbors=50)
+    X, y = rng.normal(size=(30, 3)), np.array([0, 1, 2] * 10)
+    proba = knn.fit(X, y).predict_proba(rng.normal(size=(5, 3)))
+    assert proba.shape == (5, 3) and knn.n_neighbors == 50

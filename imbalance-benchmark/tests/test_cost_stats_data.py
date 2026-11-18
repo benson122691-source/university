@@ -132,3 +132,49 @@ def test_credit_card_cleaning():
     assert "PAY_1" in ds.X and "PAY_0" not in ds.X
     assert ds.X.columns[-3:].tolist() == ["SEX", "EDUCATION", "MARRIAGE"]  # 類別欄在最後
     assert ds.y.sum() == 6636
+
+
+def test_multiclass_metrics_with_class_missing_from_fold():
+    """驗證折裡某個稀有類別完全沒出現時，指標仍然要能算（只算有出現的類別）。"""
+    y_true = np.array([0, 0, 1, 1])          # 類別 2 沒出現
+    proba = np.array([[.8, .1, .1], [.6, .3, .1], [.2, .7, .1], [.1, .8, .1]])
+    m = compute_metrics(y_true, proba, "multiclass")
+    assert m["f1_macro"] == 1.0 and m["roc_auc"] == 1.0
+
+
+@pytest.mark.parametrize("key,shape,n_pos", [
+    ("bank_marketing", (41188, 20), 4640),   # duration 已移除、新增 prev_contacted
+    ("german_credit", (1000, 20), 300),      # 正類 = 壞客戶
+    ("mammography", (11183, 6), 260),
+])
+def test_validation_binary_datasets(key, shape, n_pos):
+    if not any(DEFAULT_DATA_DIR.rglob(SPECS[key].filename)):
+        pytest.skip("資料檔不存在")
+    ds = load_dataset(key)
+    assert ds.X.shape == shape and ds.y.sum() == n_pos and ds.task == "binary"
+    if key == "bank_marketing":
+        # bank 的 duration 是「通話秒數」，打完電話才知道 → 必須移除（目標洩漏）
+        # （German Credit 也有 duration 欄，但那是貸款期數，是正常特徵）
+        assert "duration" not in ds.X.columns
+    assert ds.X.columns[len(ds.numeric):].tolist() == ds.categorical
+
+
+def test_cost_bootstrap_detects_clear_difference_only():
+    """一個明顯比較好的模型 → cheaper；一模一樣的模型 → no clear diff。"""
+    rng = np.random.default_rng(0)
+    y_tr, y_te = rng.integers(0, 2, 2000), rng.integers(0, 2, 1000)
+
+    def good(y):  # 預測跟答案高度相關
+        return np.column_stack([1 - (0.7 * y + 0.15), 0.7 * y + 0.15])
+
+    def noise(y):  # 純亂猜
+        p = rng.uniform(size=len(y))
+        return np.column_stack([1 - p, p])
+
+    oof = {("m", "none"): noise(y_tr), ("m", "smart"): good(y_tr), ("m", "copy"): None}
+    test = {("m", "none"): noise(y_te), ("m", "smart"): good(y_te)}
+    oof["m", "copy"], test["m", "copy"] = oof["m", "none"], test["m", "none"]
+    out = cost.cost_vs_baseline(oof, test, y_tr, y_te, c_fn=5, c_fp=1, n_boot=500)
+    tuned = out[out.policy == "tuned"].set_index("strategy")
+    assert tuned.loc["smart", "verdict"] == "cheaper"
+    assert tuned.loc["copy", "verdict"] == "no clear diff"

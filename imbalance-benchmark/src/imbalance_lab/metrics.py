@@ -70,14 +70,22 @@ def binary_metrics(y_true: np.ndarray, p_pos: np.ndarray, threshold: float = 0.5
 
 
 def multiclass_metrics(y_true: np.ndarray, proba: np.ndarray) -> dict:
-    """proba：形狀 (n 筆, K 類) 的機率矩陣。"""
+    """
+    proba：形狀 (n 筆, K 類) 的機率矩陣。
+
+    小心：極稀有的類別（例如 Yeast 的 ERL 全部只有 5 筆）在某些驗證折裡可能「一筆都沒有」。
+    這時 AUC 和 recall 對該類別無法定義，所以只對「驗證折裡真的出現的類別」計算。
+    """
     y_pred = proba.argmax(axis=1)
-    per_class_recall = recall_score(y_true, y_pred, average=None, zero_division=0)
+    present = np.unique(y_true)
+    per_class_recall = recall_score(y_true, y_pred, labels=present, average=None, zero_division=0)
+    # one-vs-rest AUC：每個出現的類別當正類各算一次，再取平均
+    aucs = [roc_auc_score(y_true == k, proba[:, k]) for k in present]
     return {
-        "f1_macro": f1_score(y_true, y_pred, average="macro", zero_division=0),
+        "f1_macro": f1_score(y_true, y_pred, labels=present, average="macro", zero_division=0),
         "balanced_acc": balanced_accuracy_score(y_true, y_pred),
         "mcc": matthews_corrcoef(y_true, y_pred),
-        "roc_auc": roc_auc_score(y_true, proba, multi_class="ovr", average="macro"),
+        "roc_auc": float(np.mean(aucs)),
         "min_recall": float(per_class_recall.min()),
     }
 

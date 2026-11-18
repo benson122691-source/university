@@ -1,0 +1,8 @@
+dataset,display,task,n,features,classes,ir,minority_n
+credit_card,Taiwan Credit Card Default,binary,30000,23,2,3.5208,6636
+dry_bean,Dry Bean,multiclass,13611,16,7,6.7931,522
+bank_marketing,Bank Marketing,binary,41188,20,2,7.8767,4640
+german_credit,German Credit,binary,1000,20,2,2.3333,300
+mammography,Mammography,binary,11183,6,2,42.0115,260
+yeast,Yeast,multiclass,1484,8,10,92.6,5
+page_blocks,Page Blocks,multiclass,5473,10,5,175.4643,28

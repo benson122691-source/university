@@ -15,9 +15,10 @@
 | 6 | `src/imbalance_lab/metrics.py` | 為什麼不平衡問題要看 PR-AUC 而不是只看 ROC-AUC |
 | 7 | `src/imbalance_lab/experiments.py` | 調參 → Repeated CV → 最終測試的整體流程 |
 | 8 | `src/imbalance_lab/stats.py` | 怎麼判斷「差 0.004」到底是真的還是雜訊 |
-| 9 | `src/imbalance_lab/cost.py` | 把機率變成「核准/拒絕」決策、選門檻、敏感度分析 |
-| 10 | `src/imbalance_lab/cli.py` | 所有階段如何串起來、結果存到哪裡 |
-| 11 | `tests/` | 每個關鍵性質（不洩漏、公式正確）怎麼被自動驗證 |
+| 9 | `src/imbalance_lab/cost.py` | 把機率變成「核准/拒絕」決策、選門檻、bootstrap 信賴區間、敏感度分析 |
+| 10 | `src/imbalance_lab/decision.py` | 多分類沒有門檻可調時，用「先驗修正」當作替代方案 |
+| 11 | `src/imbalance_lab/cli.py` | 所有階段如何串起來、結果存到哪裡、跨資料集總結 (summary) |
+| 12 | `tests/` | 每個關鍵性質（不洩漏、公式正確、極端小類別不報錯）怎麼被自動驗證 |
 
 `plots.py` 只負責畫圖，可以最後再看。
 
@@ -59,7 +60,19 @@ experiments.split_train_test()   80% train / 20% test（test 鎖起來）
 欠採樣讓模型看到的違約比例變高，預測機率整體偏高，效果類似把門檻調低。
 但調門檻不用丟掉任何資料。`cost.correct_undersampled_proba` 可以把欠採樣模型的機率換算回真實比例。
 
-**4. 為什麼主要指標是 PR-AUC？**
+**4. 為什麼要加「驗證資料集」？**
+只用兩份資料下結論，可能只是那兩份資料的特例。`configs/validation.yaml` 用「完全相同」的程式
+再跑 5 份不同領域的資料（銀行行銷、德國信用、乳房 X 光、酵母菌、文件版面），
+不平衡比從 2.3 到 175。結果：主要結論在 105 組比較中都成立（0 組顯著較好），
+但也發現一個例外——稀有類別只有個位數筆數時，class weight / SMOTE 對樹模型確實有幫助。
+驗證過程還抓到 3 個只在極端資料上才會出現的 bug（SMOTE 鄰居數、KNN 鄰居數、驗證折缺類別），
+這也是加入更多資料的價值：不只驗證結論，也驗證程式。
+
+**5. 為什麼要算 bootstrap 信賴區間？**
+German Credit 的 test set 只有 200 筆。單看平均數，SMOTE 的成本比較低（0.540 vs 0.575），
+看起來像「贏了」；但 bootstrap 95% 信賴區間包含 0，代表這個差距可能只是運氣。
+
+**6. 為什麼主要指標是 PR-AUC？**
 ROC 曲線的 FPR 分母是龐大的負類，誤報很多 FPR 也不大，曲線容易「看起來很好」。
 PR 曲線只看「被判成正類的人裡有多少真的是正類」，不會被負類數量稀釋。
 
@@ -69,6 +82,8 @@ PR 曲線只看「被判成正類的人裡有多少真的是正類」，不會�
 pip install -e ".[dev]"
 pytest -q                                         # 先確認測試全過（幾秒鐘）
 imbalance-lab run --config configs/quick.yaml     # 快速版，約 2 分鐘，確認流程能跑完
-imbalance-lab run                                 # 完整實驗（2 核心約 40 分鐘）
+imbalance-lab run                                 # 主要實驗（2 核心約 28 分鐘）
+imbalance-lab run --config configs/validation.yaml   # 5 份驗證資料（約 35 分鐘）
+imbalance-lab run --stages summary                # 跨資料集總結（只讀結果，幾秒鐘）
 imbalance-lab run --stages cost                   # 改了 configs 裡的成本假設，只重跑成本分析
 ```

@@ -23,6 +23,7 @@ Pipeline：Pipeline 在 fit() 時才會重採樣，predict() 時會自動跳過 
 
 from __future__ import annotations
 
+import numpy as np
 from imblearn.over_sampling import SMOTE, SMOTENC
 from imblearn.under_sampling import RandomUnderSampler, TomekLinks
 
@@ -37,6 +38,45 @@ STRATEGY_DESCRIPTIONS = {
 
 # 需要放一個 sampler 進 Pipeline 的策略
 RESAMPLING_STRATEGIES = {"random_under", "tomek", "smote"}
+
+
+# ---------------------------------------------------------------------------
+# 自動調整鄰居數的 SMOTE
+# ---------------------------------------------------------------------------
+def _safe_k(y, k_default: int) -> int:
+    """
+    SMOTE 要在「同類別的 k 個最近鄰」之間內插，所以每個要被過採樣的類別至少要有 k+1 筆。
+    Yeast 資料最小類 ERL 全部只有 5 筆，切完 train / CV 後訓練折裡可能只剩 3 筆，
+    預設 k=5 會直接報錯 → 這裡把 k 自動降到「最小類別筆數 − 1」。
+    """
+    counts = np.bincount(np.asarray(y))
+    counts = counts[counts > 0]
+    smallest_to_oversample = np.sort(counts)[:-1].min() if len(counts) > 1 else counts[0]
+    return int(max(1, min(k_default, smallest_to_oversample - 1)))
+
+
+class AdaptiveSMOTE(SMOTE):
+    """跟 SMOTE 一樣，只是 k_neighbors 會依訓練資料自動縮小（見 _safe_k）。"""
+
+    def _fit_resample(self, X, y):
+        k_orig = self.k_neighbors
+        self.k_neighbors = _safe_k(y, k_orig)
+        try:
+            return super()._fit_resample(X, y)
+        finally:
+            self.k_neighbors = k_orig  # 還原設定，不留下副作用
+
+
+class AdaptiveSMOTENC(SMOTENC):
+    """SMOTENC 版本的 AdaptiveSMOTE。"""
+
+    def _fit_resample(self, X, y):
+        k_orig = self.k_neighbors
+        self.k_neighbors = _safe_k(y, k_orig)
+        try:
+            return super()._fit_resample(X, y)
+        finally:
+            self.k_neighbors = k_orig
 
 
 def build_sampler(strategy: str, categorical_idx: list[int], seed: int):
@@ -62,6 +102,6 @@ def build_sampler(strategy: str, categorical_idx: list[int], seed: int):
         return TomekLinks(sampling_strategy="auto")
     if strategy == "smote":
         if categorical_idx:
-            return SMOTENC(categorical_features=categorical_idx, random_state=seed)
-        return SMOTE(random_state=seed)
+            return AdaptiveSMOTENC(categorical_features=categorical_idx, random_state=seed)
+        return AdaptiveSMOTE(random_state=seed)
     raise KeyError(f"未知的策略 {strategy!r}，可用：{list(STRATEGY_DESCRIPTIONS)}")
