@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "imbalance-lab"
+version = "2.0.0"
+description = "Leakage-free benchmark of imbalanced-classification strategies with cost-based decision analysis"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "scipy>=1.11",
+    "scikit-learn>=1.4",
+    "imbalanced-learn>=0.12",
+    "xgboost>=2.0",
+    "matplotlib>=3.8",
+    "pyyaml>=6.0",
+    "openpyxl>=3.1",   # 讀 Dry Bean 的 .xlsx
+    "xlrd>=2.0",       # 讀信用卡資料的 .xls
+    "joblib>=1.3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.5"]
+
+[project.scripts]
+# 安裝後可直接在終端機輸入 `imbalance-lab ...`
+imbalance-lab = "imbalance_lab.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]

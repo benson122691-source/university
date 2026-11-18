@@ -1,0 +1,27 @@
+# 每次 push / PR 自動跑程式風格檢查 + 單元測試（使用人造資料，不需要下載真實資料集）
+name: imbalance-benchmark CI
+
+on:
+  push:
+    paths: ["imbalance-benchmark/**", ".github/workflows/imbalance-benchmark.yml"]
+  pull_request:
+    paths: ["imbalance-benchmark/**", ".github/workflows/imbalance-benchmark.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: imbalance-benchmark
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+      - run: pip install -e ".[dev]"
+      - run: ruff check src tests
+      - run: pytest -q

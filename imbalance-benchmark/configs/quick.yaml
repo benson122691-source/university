@@ -1,0 +1,15 @@
+# 快速版設定：用來確認程式能從頭跑到尾（約數分鐘），數字不具參考價值
+seed: 42
+test_size: 0.2
+cv: {n_splits: 3, n_repeats: 1}
+tuning: {n_iter: 2, inner_splits: 2}
+models: [logreg, xgboost, balanced_rf]
+strategies: [none, class_weight, random_under, smote]
+datasets: [credit_card, dry_bean]
+cost: {fp: 1.0, fn: 5.0, ratios: [1, 5, 10]}
+ir_experiment:
+  dataset: credit_card
+  ratios: [3.5, 20]
+  models: [logreg, xgboost]
+  strategies: [none, class_weight, random_under, smote]
+  n_repeats: 1
