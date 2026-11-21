@@ -1,0 +1,448 @@
+{
+ "threshold_effect": {
+  "none": {
+   "f1": 0.464,
+   "f1_best": 0.55,
+   "recall": 0.349
+  },
+  "class_weight": {
+   "f1": 0.542,
+   "f1_best": 0.55,
+   "recall": 0.617
+  },
+  "random_under": {
+   "f1": 0.539,
+   "f1_best": 0.548,
+   "recall": 0.626
+  },
+  "smote": {
+   "f1": 0.536,
+   "f1_best": 0.542,
+   "recall": 0.55
+  }
+ },
+ "cost": {
+  "none": {
+   "default": 0.762,
+   "bayes": 0.563,
+   "tuned": 0.561
+  },
+  "class_weight": {
+   "default": 0.573,
+   "bayes": 0.773,
+   "tuned": 0.567
+  },
+  "random_under": {
+   "default": 0.581,
+   "bayes": 0.774,
+   "tuned": 0.563
+  },
+  "tomek": {
+   "default": 0.728,
+   "bayes": 0.559,
+   "tuned": 0.566
+  },
+  "smote": {
+   "default": 0.622,
+   "bayes": 0.753,
+   "tuned": 0.572
+  }
+ },
+ "cost_none_tuned_savings": 49.3,
+ "bayes_reject": {
+  "none": 43.4,
+  "class_weight": 99.2,
+  "random_under": 99.4
+ },
+ "brier": {
+  "none": 0.136,
+  "class weight": 0.182,
+  "random undersampling": 0.184,
+  "random undersampling, prior-corrected": 0.136,
+  "SMOTENC": 0.173
+ },
+ "wtl": {
+  "F1 at threshold 0.5": [
+   31,
+   22,
+   7
+  ],
+  "primary (threshold-free)": [
+   0,
+   81,
+   24
+  ],
+  "secondary (threshold-free)": [
+   0,
+   55,
+   5
+  ],
+  "worst-class recall": [
+   2,
+   43,
+   0
+  ]
+ },
+ "cost_wtl": {
+  "bayes": [
+   0,
+   43,
+   37
+  ],
+  "default": [
+   0,
+   25,
+   55
+  ],
+  "tuned": [
+   0,
+   51,
+   9
+  ]
+ },
+ "heatmap": [
+  {
+   "display": "German Credit",
+   "metric": "pr_auc",
+   "ir": 2,
+   "cells": [
+    {
+     "v": "+0.002",
+     "wtl": "0 / 3 / 0",
+     "fill": "EEEEEC",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.027",
+     "wtl": "0 / 4 / 0",
+     "fill": "EFDCD9",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.005",
+     "wtl": "0 / 4 / 0",
+     "fill": "F0ECE9",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.004",
+     "wtl": "0 / 4 / 0",
+     "fill": "F0EDEA",
+     "text": "0B0B0B"
+    }
+   ]
+  },
+  {
+   "display": "Taiwan Credit Card Default",
+   "metric": "pr_auc",
+   "ir": 4,
+   "cells": [
+    {
+     "v": "-0.001",
+     "wtl": "0 / 2 / 1",
+     "fill": "F0EEEB",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.006",
+     "wtl": "0 / 3 / 1",
+     "fill": "F0EAE7",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.001",
+     "wtl": "0 / 4 / 0",
+     "fill": "F0EEEB",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.011",
+     "wtl": "0 / 2 / 2",
+     "fill": "EFE8E5",
+     "text": "0B0B0B"
+    }
+   ]
+  },
+  {
+   "display": "Dry Bean",
+   "metric": "f1_macro",
+   "ir": 7,
+   "cells": [
+    {
+     "v": "-0.002",
+     "wtl": "0 / 3 / 0",
+     "fill": "F0EEEB",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.008",
+     "wtl": "0 / 0 / 4",
+     "fill": "F0E9E6",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.001",
+     "wtl": "0 / 4 / 0",
+     "fill": "F0EEEB",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.002",
+     "wtl": "0 / 4 / 0",
+     "fill": "F0EEEB",
+     "text": "0B0B0B"
+    }
+   ]
+  },
+  {
+   "display": "Bank Marketing",
+   "metric": "pr_auc",
+   "ir": 8,
+   "cells": [
+    {
+     "v": "-0.002",
+     "wtl": "0 / 2 / 1",
+     "fill": "F0EDEA",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.012",
+     "wtl": "0 / 3 / 1",
+     "fill": "EFE7E4",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.000",
+     "wtl": "0 / 4 / 0",
+     "fill": "F0EEEB",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.033",
+     "wtl": "0 / 0 / 4",
+     "fill": "EED8D5",
+     "text": "0B0B0B"
+    }
+   ]
+  },
+  {
+   "display": "Mammography",
+   "metric": "pr_auc",
+   "ir": 42,
+   "cells": [
+    {
+     "v": "-0.042",
+     "wtl": "0 / 3 / 0",
+     "fill": "EED2CF",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.125",
+     "wtl": "0 / 3 / 1",
+     "fill": "E99896",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "+0.001",
+     "wtl": "0 / 4 / 0",
+     "fill": "EFEFEC",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.059",
+     "wtl": "0 / 4 / 0",
+     "fill": "EDC7C5",
+     "text": "0B0B0B"
+    }
+   ]
+  },
+  {
+   "display": "Yeast",
+   "metric": "f1_macro",
+   "ir": 93,
+   "cells": [
+    {
+     "v": "+0.019",
+     "wtl": "0 / 3 / 0",
+     "fill": "E0E5EA",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.227",
+     "wtl": "0 / 0 / 4",
+     "fill": "E45352",
+     "text": "FFFFFF"
+    },
+    {
+     "v": "+0.000",
+     "wtl": "0 / 4 / 0",
+     "fill": "EFEFEC",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.018",
+     "wtl": "0 / 4 / 0",
+     "fill": "EFE3E0",
+     "text": "0B0B0B"
+    }
+   ]
+  },
+  {
+   "display": "Page Blocks",
+   "metric": "f1_macro",
+   "ir": 175,
+   "cells": [
+    {
+     "v": "-0.032",
+     "wtl": "0 / 2 / 1",
+     "fill": "EEDAD7",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.243",
+     "wtl": "0 / 0 / 4",
+     "fill": "E34948",
+     "text": "FFFFFF"
+    },
+    {
+     "v": "-0.004",
+     "wtl": "0 / 4 / 0",
+     "fill": "F0ECE9",
+     "text": "0B0B0B"
+    },
+    {
+     "v": "-0.026",
+     "wtl": "0 / 4 / 0",
+     "fill": "EFDDDB",
+     "text": "0B0B0B"
+    }
+   ]
+  }
+ ],
+ "yeast": {
+  "knn|none + prior adjustment": [
+   0.456,
+   0.292
+  ],
+  "knn|none": [
+   0.578,
+   0.0
+  ],
+  "knn|smote": [
+   0.448,
+   0.292
+  ],
+  "knn|random_under": [
+   0.386,
+   0.042
+  ],
+  "knn|tomek": [
+   0.566,
+   0.0
+  ],
+  "logreg|none + prior adjustment": [
+   0.474,
+   0.25
+  ],
+  "logreg|none": [
+   0.558,
+   0.0
+  ],
+  "logreg|class_weight": [
+   0.478,
+   0.208
+  ],
+  "logreg|smote": [
+   0.475,
+   0.25
+  ],
+  "logreg|random_under": [
+   0.343,
+   0.083
+  ],
+  "logreg|tomek": [
+   0.548,
+   0.0
+  ],
+  "random_forest|none + prior adjustment": [
+   0.434,
+   0.25
+  ],
+  "random_forest|none": [
+   0.496,
+   0.0
+  ],
+  "random_forest|class_weight": [
+   0.565,
+   0.042
+  ],
+  "random_forest|smote": [
+   0.562,
+   0.042
+  ],
+  "random_forest|random_under": [
+   0.347,
+   0.042
+  ],
+  "random_forest|tomek": [
+   0.479,
+   0.0
+  ],
+  "xgboost|none + prior adjustment": [
+   0.407,
+   0.0
+  ],
+  "xgboost|none": [
+   0.447,
+   0.0
+  ],
+  "xgboost|class_weight": [
+   0.538,
+   0.083
+  ],
+  "xgboost|smote": [
+   0.508,
+   0.125
+  ],
+  "xgboost|random_under": [
+   0.048,
+   0.0
+  ],
+  "xgboost|tomek": [
+   0.432,
+   0.0
+  ]
+ },
+ "v1": {
+  "KNN": [
+   0.93,
+   0.915
+  ],
+  "Random Forest": [
+   0.932,
+   0.919
+  ],
+  "SVM": [
+   0.938,
+   0.926
+  ],
+  "XGBoost": [
+   0.935,
+   0.926
+  ]
+ },
+ "images": {
+  "forest": {
+   "path": "/home/claude/university/imbalance-benchmark/presentation/img/forest.png",
+   "ratio": 1.7457627118644068
+  },
+  "calibration": {
+   "path": "/home/claude/university/imbalance-benchmark/presentation/img/calibration.png",
+   "ratio": 1.199828473413379
+  },
+  "ir": {
+   "path": "/home/claude/university/imbalance-benchmark/presentation/img/ir.png",
+   "ratio": 1.5328376703841389
+  }
+ }
+}

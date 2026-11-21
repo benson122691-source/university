@@ -3,6 +3,7 @@
 **A leakage-free benchmark of class-imbalance strategies on 7 datasets, with cost-based decisions for credit-default screening.**
 
 > 繁體中文程式碼導讀：[docs/CODE_GUIDE.zh-TW.md](docs/CODE_GUIDE.zh-TW.md)（程式內註解也是中文）
+> 15 分鐘簡報（繁中，含講稿）：[presentation/imbalance-benchmark-deck.pptx](presentation/imbalance-benchmark-deck.pptx)
 
 ![CI](https://github.com/benson122691-source/university/actions/workflows/imbalance-benchmark.yml/badge.svg)
 

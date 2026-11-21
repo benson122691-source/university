@@ -73,6 +73,10 @@ STRATEGY_LABEL = {
 }
 
 PT_PER_PX = 0.75   # 設計規格用 px，matplotlib 用 pt（1px = 0.75pt）
+
+# 基準字級。所有文字都用相對大小（"small"、"large"…），只要改這個數字就能整體放大。
+# 簡報用的圖會把它調大（見 presentation/prepare_data.py），在投影片上才看得清楚。
+BASE_FONT_SIZE = 9.5
 LINE = 2 * PT_PER_PX
 MARKER = 8 * PT_PER_PX
 RING = 2 * PT_PER_PX
@@ -86,19 +90,19 @@ def color(strategy: str, T: dict) -> str:
 def _rc(T: dict) -> dict:
     """matplotlib 全域樣式：字型、文字色、格線。"""
     return {
-        "font.family": ["Inter", "DejaVu Sans"], "font.size": 9.5,
+        "font.family": ["Inter", "DejaVu Sans"], "font.size": BASE_FONT_SIZE,
         "svg.fonttype": "path",  # 文字轉成向量路徑：在沒有 Inter 字型的電腦上看也一樣
         "figure.facecolor": T["surface"], "axes.facecolor": T["surface"],
         "savefig.facecolor": T["surface"], "savefig.bbox": "tight", "savefig.pad_inches": 0.2,
         "text.color": T["ink"], "axes.labelcolor": T["ink2"], "axes.titlecolor": T["ink"],
-        "axes.titleweight": "semibold", "axes.titlesize": 11, "axes.titlelocation": "left",
+        "axes.titleweight": "semibold", "axes.titlesize": "large", "axes.titlelocation": "left",
         "axes.titlepad": 12, "axes.edgecolor": T["axis"], "axes.linewidth": 0.75,
         "axes.spines.top": False, "axes.spines.right": False,
         "xtick.color": T["ink2"], "ytick.color": T["ink2"],
         "xtick.labelcolor": T["ink2"], "ytick.labelcolor": T["ink2"],
         "xtick.major.size": 0, "ytick.major.size": 0, "xtick.major.pad": 6, "ytick.major.pad": 6,
         "axes.grid": True, "grid.color": T["grid"], "grid.linewidth": 0.75, "grid.linestyle": "-",
-        "axes.axisbelow": True, "legend.frameon": False, "legend.fontsize": 9,
+        "axes.axisbelow": True, "legend.frameon": False, "legend.fontsize": "medium",
         "legend.labelcolor": T["ink2"], "lines.linewidth": LINE, "lines.solid_capstyle": "round",
         "lines.solid_joinstyle": "round",
     }
@@ -197,7 +201,7 @@ def _legend_top(ax, ncol: int = 5) -> None:
 
 def _footnote(fig, text: str, T: dict) -> None:
     """圖下方的小字註解（符號說明）。"""
-    fig.text(0.01, 0.0, text, ha="left", va="top", fontsize=8, color=T["muted"],
+    fig.text(0.01, 0.0, text, ha="left", va="top", fontsize="small", color=T["muted"],
              transform=fig.transFigure)
 
 
@@ -218,7 +222,7 @@ def class_distribution(y: np.ndarray, class_names: list[str], title: str, path: 
                       horizontal=True)
         for i, v in enumerate(counts.values):  # 數值標在長條尾端
             ax.text(v + counts.max() * 0.015, i, f"{v:,}  ({v / total:.1%})", va="center",
-                    fontsize=8.5, color=T["ink2"])
+                    fontsize="small", color=T["ink2"])
         ax.set_yticks(range(len(counts)), counts.index)
         ax.grid(axis="y", visible=False)
         ax.spines["left"].set_visible(False)
@@ -291,7 +295,7 @@ def diff_forest(comp: pd.DataFrame, title: str, path: Path) -> None:
             ticks.append(y)
             labels.append(f"{MODEL_DISPLAY[r.model]}  ·  {STRATEGY_LABEL[r.strategy]}")
             prev, y = r.model, y + 1
-        ax.set_yticks(ticks, labels, fontsize=8.5)
+        ax.set_yticks(ticks, labels, fontsize="small")
         ax.set_ylim(y - 0.4, -0.6)
         ax.grid(axis="y", visible=False)
         ax.spines["left"].set_visible(False)
@@ -313,7 +317,7 @@ def pr_curves(y_test: np.ndarray, test_proba: dict, model: str, title: str, path
         fig, ax = plt.subplots(figsize=(6.6, 4.8))
         ax.axhline(prevalence, color=T["muted"], lw=1, zorder=1)
         ax.text(0.99, prevalence + 0.015, f"random guess (= prevalence {prevalence:.0%})",
-                ha="right", va="bottom", fontsize=8, color=T["muted"])
+                ha="right", va="bottom", fontsize="small", color=T["muted"])
         for s, (prec, rec, _) in curves.items():
             ax.plot(rec, prec, color=color(s, T), label=STRATEGY_LABEL[s], zorder=3 if s == "none" else 2)
         ax.set_xlim(0, 1)
@@ -339,7 +343,7 @@ def calibration(y_test: np.ndarray, curves: dict[str, tuple[np.ndarray, str, str
     def draw(T):
         fig, ax = plt.subplots(figsize=(6.6, 5.0))
         ax.plot([0, 1], [0, 1], color=T["muted"], lw=1, zorder=1)
-        ax.text(0.97, 0.93, "perfect calibration", ha="right", fontsize=8, color=T["muted"])
+        ax.text(0.97, 0.93, "perfect calibration", ha="right", fontsize="small", color=T["muted"])
         for label, ((frac, mean_pred), s, ls) in pts.items():
             c = color(s, T)
             ax.plot(mean_pred, frac, color=c, ls=ls, zorder=2, label=label,
@@ -415,7 +419,7 @@ def threshold_policies(costs: pd.DataFrame, model: str, title: str, path: Path) 
             j_min = int(np.argmin([vals[s][i] for s in strategies]))
             x = i - 0.42 + slot * (j_min + 0.5)
             ax.text(x, vals[strategies[j_min]][i] + ax.get_ylim()[1] * 0.012, f"{vals[strategies[j_min]][i]:.3f}",
-                    ha="center", va="bottom", fontsize=8, color=T["ink2"])
+                    ha="center", va="bottom", fontsize="small", color=T["ink2"])
         ax.set_xticks(range(len(policies)), names)
         ax.grid(axis="x", visible=False)
         ax.set_ylabel("expected cost per applicant (lower is better)")
@@ -426,15 +430,20 @@ def threshold_policies(costs: pd.DataFrame, model: str, title: str, path: Path) 
     render(draw, path)
 
 
-def ir_small_multiples(ir_scores: pd.DataFrame, metrics: list[str], title: str, path: Path) -> None:
-    """受控不平衡實驗：列 = 指標、欄 = 模型；x 軸 = 不平衡比 (log 尺度)；陰影 = ± 1 標準差。"""
+def ir_small_multiples(ir_scores: pd.DataFrame, metrics: list[str], title: str, path: Path,
+                       panel_size: tuple[float, float] = (4.0, 2.7)) -> None:
+    """
+    受控不平衡實驗：列 = 指標、欄 = 模型；x 軸 = 不平衡比 (log 尺度)；陰影 = ± 1 標準差。
+    panel_size = 每個子圖的 (寬, 高) 英吋；簡報用大字時要給比較大的子圖。
+    """
     models = [m for m in MODEL_DISPLAY if m in ir_scores.model.unique()]
     irs = sorted(ir_scores.ir.unique())
     labels = {"pr_auc_lift": "PR-AUC ÷ prevalence", "f1": "F1 at threshold 0.5",
               "f1_best": "best F1 over thresholds"}
 
     def draw(T):
-        fig, axes = plt.subplots(len(metrics), len(models), figsize=(4.0 * len(models), 2.7 * len(metrics)),
+        pw, ph = panel_size
+        fig, axes = plt.subplots(len(metrics), len(models), figsize=(pw * len(models), ph * len(metrics)),
                                  sharex=True, squeeze=False)
         for i, metric in enumerate(metrics):
             for j, model in enumerate(models):
@@ -453,13 +462,13 @@ def ir_small_multiples(ir_scores: pd.DataFrame, metrics: list[str], title: str, 
                 ax.set_xticks(irs, [f"{r:g}" for r in irs])
                 ax.minorticks_off()
                 if i == 0:
-                    ax.set_title(MODEL_DISPLAY[model], fontsize=10)
+                    ax.set_title(MODEL_DISPLAY[model], fontsize="medium")
                 if j == 0:
                     ax.set_ylabel(labels.get(metric, metric))
                 if i == len(metrics) - 1:
                     ax.set_xlabel("imbalance ratio (majority : minority)")
         handles, lab = axes[0][0].get_legend_handles_labels()
-        fig.suptitle(title, x=0.01, y=0.995, ha="left", fontweight="semibold", fontsize=11, color=T["ink"])
+        fig.suptitle(title, x=0.01, y=0.995, ha="left", fontweight="semibold", fontsize="large", color=T["ink"])
         leg = fig.legend(handles, lab, loc="upper left", bbox_to_anchor=(0.01, 0.965), ncol=len(lab),
                          handlelength=2.0)
         for h in leg.legend_handles:  # 圖例的點不加外框，避免線看起來像虛線
@@ -502,15 +511,15 @@ def summary_heatmap(cells: pd.DataFrame, title: str, path: Path) -> None:
                 # 格內文字顏色依底色亮度選擇：深底用白字、淺底用深色字
                 lum = np.dot(to_rgb(fill), [0.2126, 0.7152, 0.0722])
                 tc = "#ffffff" if lum < 0.45 else "#0b0b0b"
-                ax.text(j, i - 0.12, f"{r.mean_diff:+.3f}", ha="center", va="center", fontsize=9.5,
+                ax.text(j, i - 0.12, f"{r.mean_diff:+.3f}", ha="center", va="center", fontsize="medium",
                         fontweight="semibold", color=tc)
                 ax.text(j, i + 0.2, f"{r.better:.0f} / {r.tie:.0f} / {r.worse:.0f}", ha="center",
-                        va="center", fontsize=8, color=tc)
+                        va="center", fontsize="small", color=tc)
         ax.set_xlim(-0.5, len(strategies) - 0.5)
         ax.set_ylim(len(datasets) - 0.5, -0.5)
         ax.set_xticks(range(len(strategies)), [STRATEGY_LABEL[s] for s in strategies])
         ax.xaxis.tick_top()
-        ax.set_yticks(range(len(datasets)), ylabels, fontsize=8.5)
+        ax.set_yticks(range(len(datasets)), ylabels, fontsize="small")
         ax.grid(False)
         for sp in ax.spines.values():
             sp.set_visible(False)
@@ -519,7 +528,7 @@ def summary_heatmap(cells: pd.DataFrame, title: str, path: Path) -> None:
         ax.text(-0.5, len(datasets) - 0.5 + 0.35,
                 "cell: mean Δ of the primary metric vs. no handling (averaged over models)   ·   "
                 "models significantly better / no sig. diff / significantly worse",
-                ha="left", va="top", fontsize=8, color=T["muted"])
+                ha="left", va="top", fontsize="small", color=T["muted"])
         return fig
 
     render(draw, path)

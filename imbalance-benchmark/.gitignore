@@ -16,3 +16,6 @@ data/
 *.swp
 # 機率預測快取檔（體積大，可用 cv / test 階段重新產生）
 *.npz
+
+# 簡報預覽用的 PDF（由 pptx 轉出，不需要版控）
+presentation/*.pdf
