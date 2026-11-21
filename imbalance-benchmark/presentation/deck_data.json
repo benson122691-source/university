@@ -433,15 +433,15 @@
  },
  "images": {
   "forest": {
-   "path": "/home/claude/university/imbalance-benchmark/presentation/img/forest.png",
+   "path": "img/forest.png",
    "ratio": 1.7457627118644068
   },
   "calibration": {
-   "path": "/home/claude/university/imbalance-benchmark/presentation/img/calibration.png",
+   "path": "img/calibration.png",
    "ratio": 1.199828473413379
   },
   "ir": {
-   "path": "/home/claude/university/imbalance-benchmark/presentation/img/ir.png",
+   "path": "img/ir.png",
    "ratio": 1.5328376703841389
   }
  }

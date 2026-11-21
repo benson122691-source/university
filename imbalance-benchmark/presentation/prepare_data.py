@@ -92,7 +92,7 @@ for f in IMG.glob("*.svg"):  # 簡報只用 PNG
 out["images"] = {}
 for k in ["forest", "calibration", "ir"]:
     w_, h_ = Image.open(IMG / f"{k}.png").size
-    out["images"][k] = {"path": str(IMG / f"{k}.png"), "ratio": w_ / h_}
+    out["images"][k] = {"path": f"img/{k}.png", "ratio": w_ / h_}  # 相對於 presentation/
 
 (Path(__file__).parent / "deck_data.json").write_text(json.dumps(out, indent=1, ensure_ascii=False))
 print(json.dumps({k: v for k, v in out.items() if k not in ("heatmap", "images", "yeast")}, ensure_ascii=False, indent=1))

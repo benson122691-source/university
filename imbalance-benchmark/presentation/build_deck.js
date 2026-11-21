@@ -122,7 +122,7 @@ function addImg(slide, key, x, y, maxW, maxH) {
   const { path: p, ratio } = D.images[key];
   let w = maxW, h = maxW / ratio;
   if (h > maxH) { h = maxH; w = maxH * ratio; }
-  slide.addImage({ path: p, x, y, w, h, altText: key });
+  slide.addImage({ path: path.join(__dirname, p), x, y, w, h, altText: key });
   return { w, h };
 }
 
