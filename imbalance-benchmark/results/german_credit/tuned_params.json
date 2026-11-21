@@ -1,0 +1,42 @@
+{
+  "logreg": {
+    "params": {
+      "model__C": 0.0745934328572655
+    },
+    "inner_cv_score": 0.5925106600365607
+  },
+  "knn": {
+    "params": {
+      "model__n_neighbors": 37,
+      "model__weights": "distance"
+    },
+    "inner_cv_score": 0.5753789091986977
+  },
+  "random_forest": {
+    "params": {
+      "model__min_samples_leaf": 2,
+      "model__max_features": "sqrt",
+      "model__max_depth": 24
+    },
+    "inner_cv_score": 0.6189207900969155
+  },
+  "xgboost": {
+    "params": {
+      "model__colsample_bytree": 0.6923575302488596,
+      "model__learning_rate": 0.03841474365667243,
+      "model__max_depth": 6,
+      "model__min_child_weight": 7,
+      "model__n_estimators": 363,
+      "model__subsample": 0.6137554084460873
+    },
+    "inner_cv_score": 0.601868827802942
+  },
+  "balanced_rf": {
+    "params": {
+      "model__min_samples_leaf": 1,
+      "model__max_features": "log2",
+      "model__max_depth": 12
+    },
+    "inner_cv_score": 0.6172787732159511
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "none": 0.16989306813876887,
+  "class weight": 0.18758667141423355,
+  "random undersampling": 0.21010730356330867,
+  "random undersampling, prior-corrected": 0.17887641191339057,
+  "SMOTENC": 0.17174687248257517
+}

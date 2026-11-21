@@ -1,0 +1,5 @@
+dataset,none,class weight,random undersampling,"random undersampling, prior-corrected",SMOTENC
+credit_card,0.1356,0.1823,0.184,0.1361,0.1735
+bank_marketing,0.0743,0.1465,0.1582,0.0755,0.0921
+german_credit,0.1699,0.1876,0.2101,0.1789,0.1717
+mammography,0.009,0.0116,0.0669,0.0115,0.0129

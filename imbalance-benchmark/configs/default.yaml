@@ -1,0 +1,42 @@
+# =============================================================
+# 實驗設定檔：所有「可調的數字」都集中在這裡，程式碼裡不寫死。
+# 想改實驗規模（例如 CV 次數）只要改這個檔案，不用動程式。
+# =============================================================
+
+seed: 42            # 亂數種子：固定它，每次執行結果才會一樣（可重現）
+test_size: 0.2      # 切出 20% 當最終測試集，整個實驗過程中「完全不碰」，只在最後評估用一次
+
+# Repeated Stratified K-Fold：5 折 × 重複 3 次 = 每個組合得到 15 個分數
+# 有 15 個分數才能算平均 ± 標準差，判斷差異是不是只是雜訊
+cv:
+  n_splits: 5
+  n_repeats: 3
+
+# 超參數調整（只用訓練集，test set 不參與）
+tuning:
+  n_iter: 12        # RandomizedSearch 隨機試幾組參數
+  inner_splits: 3   # 調參時內部再切幾折
+
+# 要比較的模型（SVM 已移除，理由見 README）
+models: [logreg, knn, random_forest, xgboost, balanced_rf]
+
+# 要比較的不平衡處理策略
+strategies: [none, class_weight, random_under, tomek, smote]
+
+datasets: [credit_card, dry_bean]
+
+# 成本設定（只用在二分類的信用卡資料）
+# 單位是「相對成本」：把誤拒一位好客戶的損失當作 1
+cost:
+  fp: 1.0           # False Positive：把好客戶誤判成會違約 → 拒絕他，損失潛在利息收入
+  fn: 5.0           # False Negative：把會違約的人誤判成好客戶 → 核准他，損失本金
+  # 敏感度分析：FN 成本是 FP 的幾倍？逐一測試，看結論會不會因假設不同而翻盤
+  ratios: [1, 2, 3, 5, 8, 10, 15, 20]
+
+# 受控不平衡程度實驗：同一份資料，人為把少數類抽少，製造不同的不平衡比 (IR)
+ir_experiment:
+  dataset: credit_card
+  ratios: [3.5, 10, 25, 50, 100]   # IR = 多數類數量 / 少數類數量；3.5 約等於原始資料
+  models: [logreg, xgboost]
+  strategies: [none, class_weight, random_under, smote]
+  n_repeats: 2                     # 這個實驗組合多，重複次數少一點以控制時間

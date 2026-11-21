@@ -1,0 +1,15 @@
+policy,strategy,cheaper,no clear diff,costlier
+bayes,class_weight,0,5,7
+bayes,none,0,14,6
+bayes,random_under,0,4,12
+bayes,smote,0,5,11
+bayes,tomek,0,15,1
+default,class_weight,0,8,4
+default,none,0,1,19
+default,random_under,0,7,9
+default,smote,0,8,8
+default,tomek,0,1,15
+tuned,class_weight,0,12,0
+tuned,random_under,0,13,3
+tuned,smote,0,12,4
+tuned,tomek,0,14,2

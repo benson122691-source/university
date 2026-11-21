@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+
+# 原始資料不放進 git（授權與檔案大小考量）；第一次執行時會自動下載或手動放入
+data/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+# 機率預測快取檔（體積大，可用 cv / test 階段重新產生）
+*.npz
+
+# 簡報預覽用的 PDF（由 pptx 轉出，不需要版控）
+presentation/*.pdf

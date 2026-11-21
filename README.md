@@ -6,4 +6,4 @@ A collection of university course and research projects.
 
 | Project | Description |
 |---|---|
-| [dry-bean-undersampling](./dry-bean-undersampling) | Undersampling for imbalanced classification (Dry Bean / Credit Card datasets; KNN, Random Forest, SVM, XGBoost) |
+| [imbalance-benchmark](./imbalance-benchmark) | Leakage-free benchmark of imbalanced-classification strategies on 7 datasets (class weighting, undersampling, Tomek links, SMOTENC, balanced RF) with repeated CV, corrected significance tests, a controlled imbalance-ratio experiment, and cost-based threshold decisions for credit-default screening |

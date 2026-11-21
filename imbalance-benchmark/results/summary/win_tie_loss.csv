@@ -1,0 +1,17 @@
+kind,strategy,better,no sig. diff,worse
+F1 at threshold 0.5,class_weight,6,5,1
+F1 at threshold 0.5,random_under,9,3,4
+F1 at threshold 0.5,smote,8,6,2
+F1 at threshold 0.5,tomek,8,8,0
+primary (threshold-free),class_weight,0,18,3
+primary (threshold-free),random_under,0,13,15
+primary (threshold-free),smote,0,22,6
+primary (threshold-free),tomek,0,28,0
+secondary (threshold-free),class_weight,0,12,0
+secondary (threshold-free),random_under,0,16,0
+secondary (threshold-free),smote,0,11,5
+secondary (threshold-free),tomek,0,16,0
+worst-class recall,class_weight,1,8,0
+worst-class recall,random_under,0,12,0
+worst-class recall,smote,1,11,0
+worst-class recall,tomek,0,12,0

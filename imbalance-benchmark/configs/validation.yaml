@@ -1,0 +1,31 @@
+# =============================================================
+# 驗證用設定檔：5 份「不同領域、不同不平衡程度」的資料，
+# 用跟主要實驗「完全相同」的模型、策略、流程重跑，
+# 看主要結論是否能推廣，而不是只在信用卡 / Dry Bean 上成立。
+#
+# 跟 default.yaml 的差別只有：CV 重複 2 次（而非 3 次）、調參試 10 組（而非 12 組），
+# 以控制總運算時間；每組仍有 10 個配對分數可做檢定。
+# =============================================================
+
+seed: 42
+test_size: 0.2
+
+cv:
+  n_splits: 5
+  n_repeats: 2
+
+tuning:
+  n_iter: 10
+  inner_splits: 3
+
+models: [logreg, knn, random_forest, xgboost, balanced_rf]
+strategies: [none, class_weight, random_under, tomek, smote]
+
+datasets: [bank_marketing, german_credit, mammography, yeast, page_blocks]
+
+# German Credit 官方成本矩陣：壞客戶誤判為好 = 5，好客戶誤判為壞 = 1（與主實驗假設相同）
+# 其他二分類資料沒有官方成本，同樣用 5:1 並以敏感度分析（1~20 倍）檢查結論是否穩定
+cost:
+  fp: 1.0
+  fn: 5.0
+  ratios: [1, 2, 3, 5, 8, 10, 15, 20]
