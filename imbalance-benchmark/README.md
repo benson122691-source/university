@@ -79,7 +79,10 @@ Every configuration is one `imblearn.Pipeline`: **scale numerics → one-hot cat
 
 ### 1. Credit card: no strategy ranks defaulters better than doing nothing
 
-![Credit card: strategy vs. baseline](figures/credit_card/03_diff_vs_baseline.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/credit_card/03_diff_vs_baseline-dark.svg">
+  <img alt="Credit card: strategy vs. baseline" src="figures/credit_card/03_diff_vs_baseline.svg">
+</picture>
 
 PR-AUC, mean ± sd over 15 CV folds (full table: [`results/credit_card/cv_summary.csv`](results/credit_card/cv_summary.csv)):
 
@@ -107,7 +110,10 @@ At 0.5, every strategy beats *none* by a wide, highly significant margin. That i
 
 Assumed costs: approving a defaulter costs **C_FN = 5** and rejecting a good payer costs **C_FP = 1** (relative units, set in `configs/default.yaml`). Three threshold rules are compared: plain 0.5; the Bayes rule *t\* = C_FP/(C_FP+C_FN) = 0.167*; and a threshold tuned to minimize cost on **out-of-fold training predictions**, which never touches the test set.
 
-![Cost by threshold rule](figures/credit_card/05_threshold_policies.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/credit_card/05_threshold_policies-dark.svg">
+  <img alt="Cost by threshold rule" src="figures/credit_card/05_threshold_policies.svg">
+</picture>
 
 | XGBoost, test set | threshold 0.5 | Bayes threshold | tuned threshold |
 |---|---|---|---|
@@ -120,17 +126,26 @@ Assumed costs: approving a defaulter costs **C_FN = 5** and rejecting a good pay
 
 **Is this conclusion fragile to the cost assumption?** No. Sweeping C_FN/C_FP from 1 to 20, the tuned-threshold savings of all five strategies stay within 1 percentage point of each other for cost ratios ≥ 5. Below that, SMOTENC trails by up to 3.7 pp, and no strategy overtakes the baseline by a meaningful margin ([`cost_sensitivity.csv`](results/credit_card/cost_sensitivity.csv)):
 
-![Cost sensitivity](figures/credit_card/06_cost_sensitivity.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/credit_card/06_cost_sensitivity-dark.svg">
+  <img alt="Cost sensitivity" src="figures/credit_card/06_cost_sensitivity.svg">
+</picture>
 
 ### 4. Calibration: resampling distorts probabilities, and it can be undone
 
-![Calibration](figures/credit_card/07_calibration.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/credit_card/07_calibration-dark.svg">
+  <img alt="Calibration" src="figures/credit_card/07_calibration.svg">
+</picture>
 
 Class weighting, undersampling and SMOTENC all overestimate default risk. Test Brier scores: none 0.136 · class weight 0.182 · random under 0.184 · SMOTENC 0.173. Applying the prior correction *p = βp_s / (βp_s − p_s + 1)* ([Dal Pozzolo et al., 2015](https://doi.org/10.1109/SSCI.2015.33)) to the undersampled model brings its Brier score back to **0.136**. This matters whenever probabilities feed a downstream decision such as pricing, credit limits or expected-loss provisioning.
 
 ### 5. Dry Bean (7 classes): the same story, and the "rare" class isn't the hard one
 
-![Dry Bean CV](figures/dry_bean/02_cv_dotplot.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/dry_bean/02_cv_dotplot-dark.svg">
+  <img alt="Dry Bean CV" src="figures/dry_bean/02_cv_dotplot.svg">
+</picture>
 
 - Random undersampling is **significantly worse for all four models** it applies to (macro-F1 −0.006 to −0.009). It cuts the training set from 10,888 to 2,926 rows. No strategy is significantly better than *none*, on macro-F1 or on worst-class recall.
 - The minority class BOMBAY (3.8 %) reaches **≥ 99 % test recall in all 20 configurations**, because it is trivially separable. The hardest class is SIRA, the *second-largest* class (recall 0.81–0.90; the worst class in 15 of 20 configurations). Rebalancing class counts cannot fix class *overlap*.
@@ -139,7 +154,10 @@ Class weighting, undersampling and SMOTENC all overestimate default risk. Test B
 
 The credit-card data is resampled down to IR = 3.5, 10, 25, 50 and 100 (only defaulters are removed), and evaluated with 5×2 repeated CV.
 
-![IR experiment](figures/ir_experiment/ir_small_multiples.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/ir_experiment/ir_small_multiples-dark.svg">
+  <img alt="IR experiment" src="figures/ir_experiment/ir_small_multiples.svg">
+</picture>
 
 - **Ranking quality** (PR-AUC divided by prevalence, top row; best-threshold F1, bottom row): no strategy is consistently better than *none* at any IR. The few points where one edges ahead are well inside the fold-to-fold spread. SMOTENC falls further behind as imbalance grows (XGBoost lift at IR 100: 3.6 vs. 5.6 for *none*).
 - **At threshold 0.5** (middle row): *none* collapses. Recall is effectively 0 from IR 25 upward, because the model almost never predicts above 0.5.
@@ -149,7 +167,10 @@ The credit-card data is resampled down to IR = 3.5, 10, 25, 50 and 100 (only def
 
 The same pipeline was re-run on five datasets from other domains. The heatmap summarises the primary threshold-free metric. Each cell shows the mean difference vs. doing nothing, averaged over models, followed by how many models were significantly better / not different / significantly worse.
 
-![Summary across 7 datasets](figures/summary/summary_heatmap.png)
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/summary/summary_heatmap-dark.svg">
+  <img alt="Summary across 7 datasets" src="figures/summary/summary_heatmap.svg">
+</picture>
 
 | Comparison vs. doing nothing (all 7 datasets × models) | better | no sig. diff | worse |
 |---|---|---|---|

@@ -9,8 +9,9 @@
     imbalance-lab run --config configs/quick.yaml      # 換一份設定（例如快速版）
 
 階段 (stages)：
-    tune → cv → stats → test → cost → ir → summary
-    （stats 只重新分析已存好的 CV 分數；summary 彙整所有資料集；兩者都不重新訓練）
+    tune → cv → stats → test → cost → ir → summary → figures
+    （stats、summary、figures 只讀已存好的結果，不重新訓練；
+      例如只想重畫所有圖：imbalance-lab run --stages figures summary）
 每個階段的輸出都存成檔案，後面的階段直接讀檔，
 所以改了成本假設只要重跑 cost，不用重新訓練所有模型。
 
@@ -38,7 +39,7 @@ from .metrics import PRIMARY_METRIC
 from .stats import average_ranks, compare_to_baseline
 
 ROOT = Path(__file__).resolve().parents[2]  # 專案根目錄
-ALL_STAGES = ["tune", "cv", "stats", "test", "cost", "ir", "summary"]
+ALL_STAGES = ["tune", "cv", "stats", "test", "cost", "ir", "summary", "figures"]
 
 
 # ---------------------------------------------------------------------------
@@ -74,8 +75,6 @@ def run_dataset(key: str, cfg: dict, stages: list[str], n_jobs: int) -> None:
     print(f"\n=== {ds.display}: {len(ds.y)} rows, {ds.X.shape[1]} features, "
           f"{len(ds.class_names)} classes, IR={ds.imbalance_ratio:.2f}, primary metric={metric}")
 
-    plots.class_distribution(ds.y, ds.class_names, ds.display, fig_dir / "01_class_distribution.png")
-
     # ---- 階段 1：調參 ----
     params_path = res_dir / "tuned_params.json"
     if "tune" in stages:
@@ -100,10 +99,6 @@ def run_dataset(key: str, cfg: dict, stages: list[str], n_jobs: int) -> None:
         test_scores, test_proba = evaluate_test(train, test, models, strategies, params, seed)
         _fmt_csv(test_scores, res_dir / "test_scores.csv")
         _save_proba(test_proba, res_dir / "test_proba.npz")
-        if ds.task == "binary":
-            plots.pr_curves(test.y, test_proba, "xgboost",
-                            f"{ds.display}: XGBoost precision-recall on test set",
-                            fig_dir / "04_pr_curves_xgboost.png")
 
     # ---- 階段 4（多分類版）：決策規則分析 —— 先驗修正 vs. 重採樣 ----
     if "cost" in stages and ds.task == "multiclass":
@@ -125,29 +120,63 @@ def run_dataset(key: str, cfg: dict, stages: list[str], n_jobs: int) -> None:
         sens = cost_mod.sensitivity(oof, test_proba, train.y, test.y, c["ratios"], c["fp"])
         _fmt_csv(sens, res_dir / "cost_sensitivity.csv")
 
-        plots.threshold_policies(
-            costs, "xgboost",
-            f"XGBoost: cost by threshold rule (C_FN={c['fn']:g}, C_FP={c['fp']:g})",
-            fig_dir / "05_threshold_policies.png")
-        plots.cost_sensitivity(sens, "xgboost",
-                               "XGBoost (tuned threshold): savings across cost assumptions",
-                               fig_dir / "06_cost_sensitivity.png")
-
-        # 校準圖：欠採樣讓機率偏高，用 Dal Pozzolo 公式修正後應該回到對角線附近
-        beta = train.y.sum() / (len(train.y) - train.y.sum())  # 保留的負類比例
-        p = {s: test_proba[("xgboost", s)][:, 1] for s in ["none", "random_under", "smote", "class_weight"]}
-        corrected = cost_mod.correct_undersampled_proba(p["random_under"], beta)
-        curves = {
-            "none": (p["none"], "none", "-"),
-            "class weight": (p["class_weight"], "class_weight", "-"),
-            "random undersampling": (p["random_under"], "random_under", "-"),
-            "random undersampling, prior-corrected": (corrected, "random_under", "--"),
-            "SMOTENC": (p["smote"], "smote", "-"),
-        }
-        plots.calibration(test.y, curves, "XGBoost: are the predicted probabilities honest?",
-                          fig_dir / "07_calibration.png")
+        # 校準：欠採樣讓機率偏高，用 Dal Pozzolo 公式修正後應該回到真實比例附近
+        curves = _calibration_curves(test_proba, train.y)
         brier = {k: float(np.mean((v[0] - test.y) ** 2)) for k, v in curves.items()}
         (res_dir / "calibration_brier.json").write_text(json.dumps(brier, indent=2))
+
+    # ---- 圖表：只讀已存好的結果來畫，任何階段跑完都會更新；也可單獨執行 --stages figures ----
+    if set(stages) & {"cv", "stats", "test", "cost", "figures"}:
+        make_figures(ds, train, test, res_dir, fig_dir, cfg)
+
+
+def _calibration_curves(test_proba: dict, y_train: np.ndarray) -> dict:
+    """校準圖要畫的幾條線：{圖例: (正類機率, 策略, 線型)}。"""
+    beta = y_train.sum() / (len(y_train) - y_train.sum())  # 欠採樣時「保留的負類比例」
+    p = {s: test_proba[("xgboost", s)][:, 1] for s in ["none", "random_under", "smote", "class_weight"]}
+    return {
+        "none": (p["none"], "none", "-"),
+        "class weight": (p["class_weight"], "class_weight", "-"),
+        "random undersampling": (p["random_under"], "random_under", "-"),
+        "random undersampling, prior-corrected": (
+            cost_mod.correct_undersampled_proba(p["random_under"], beta), "random_under", "--"),
+        "SMOTE / SMOTENC": (p["smote"], "smote", "-"),
+    }
+
+
+def make_figures(ds, train, test, res_dir: Path, fig_dir: Path, cfg: dict) -> None:
+    """
+    依「已經存在的結果檔」重畫這份資料集的所有圖。
+    缺哪個結果檔就跳過那張圖，所以任何時候都可以安全地呼叫。
+    """
+    metric = PRIMARY_METRIC[ds.task]
+    plots.class_distribution(ds.y, ds.class_names, ds.display, fig_dir / "01_class_distribution")
+
+    if (res_dir / "cv_scores.csv").exists() and (res_dir / "cv_vs_baseline.csv").exists():
+        scores = pd.read_csv(res_dir / "cv_scores.csv")
+        comp = pd.read_csv(res_dir / "cv_vs_baseline.csv")
+        plots.cv_dotplot(scores, metric, f"{ds.display}: {metric} by model and strategy",
+                         fig_dir / "02_cv_dotplot")
+        plots.diff_forest(comp[comp.metric == metric], f"{ds.display}: does the strategy beat doing nothing?",
+                          fig_dir / "03_diff_vs_baseline")
+
+    if ds.task != "binary" or not (res_dir / "test_proba.npz").exists():
+        return
+    test_proba = _load_proba(res_dir / "test_proba.npz")
+    plots.pr_curves(test.y, test_proba, "xgboost", f"{ds.display}: XGBoost precision–recall on the test set",
+                    fig_dir / "04_pr_curves_xgboost")
+    if (res_dir / "cost_policies.csv").exists():
+        c = cfg["cost"]
+        plots.threshold_policies(pd.read_csv(res_dir / "cost_policies.csv"), "xgboost",
+                                 f"{ds.display} · XGBoost: test cost by threshold rule "
+                                 f"(C_FN = {c['fn']:g}, C_FP = {c['fp']:g})",
+                                 fig_dir / "05_threshold_policies")
+        plots.cost_sensitivity(pd.read_csv(res_dir / "cost_sensitivity.csv"), "xgboost",
+                               f"{ds.display} · XGBoost, tuned thresholds: is any strategy cheaper than none?",
+                               fig_dir / "06_cost_sensitivity")
+    plots.calibration(test.y, _calibration_curves(test_proba, train.y),
+                      f"{ds.display} · XGBoost: are the predicted probabilities honest?",
+                      fig_dir / "07_calibration")
 
 
 def analyze_cv(display: str, task: str, res_dir: Path, fig_dir: Path, n_splits: int) -> None:
@@ -174,17 +203,12 @@ def analyze_cv(display: str, task: str, res_dir: Path, fig_dir: Path, n_splits: 
     _fmt_csv(ranks, res_dir / "cv_avg_ranks.csv")
     (res_dir / "friedman.json").write_text(json.dumps(ranks.attrs.get("friedman", {}), indent=2))
 
-    plots.cv_dotplot(scores, metric, f"{display}: {metric} by model and strategy",
-                     fig_dir / "02_cv_dotplot.png")
-    plots.diff_forest(comp[comp.metric == metric], f"{display}: does the strategy beat doing nothing?",
-                      fig_dir / "03_diff_vs_baseline.png")
-
 
 def run_ir(cfg: dict, n_jobs: int) -> None:
     """受控不平衡程度實驗（使用信用卡資料調好的參數）。"""
     ir = cfg["ir_experiment"]
     key = ir["dataset"]
-    res_dir, fig_dir = ROOT / "results" / "ir_experiment", ROOT / "figures" / "ir_experiment"
+    res_dir = ROOT / "results" / "ir_experiment"
     res_dir.mkdir(parents=True, exist_ok=True)
     tuned = json.loads((ROOT / "results" / key / "tuned_params.json").read_text())
     params = {m: v["params"] for m, v in tuned.items()}
@@ -198,9 +222,16 @@ def run_ir(cfg: dict, n_jobs: int) -> None:
                .agg(["mean", "std"]))
     summary.columns = [f"{a}_{b}" for a, b in summary.columns]
     _fmt_csv(summary.reset_index(), res_dir / "ir_summary.csv")
-    plots.ir_small_multiples(scores, ["pr_auc_lift", "f1", "f1_best"],
-                             "Same data, increasing imbalance: how each strategy holds up",
-                             fig_dir / "ir_small_multiples.png")
+    plot_ir()
+
+
+def plot_ir() -> None:
+    """IR 實驗的圖（只讀 ir_scores.csv）。"""
+    f = ROOT / "results" / "ir_experiment" / "ir_scores.csv"
+    if f.exists():
+        plots.ir_small_multiples(pd.read_csv(f), ["pr_auc_lift", "f1", "f1_best"],
+                                 "Same data, increasing imbalance: how each strategy holds up",
+                                 ROOT / "figures" / "ir_experiment" / "ir_small_multiples")
 
 
 def summarize() -> None:
@@ -254,7 +285,7 @@ def summarize() -> None:
              .reset_index())
     _fmt_csv(cells, out_res / "heatmap_cells.csv")
     plots.summary_heatmap(cells, "Across 7 datasets: does any strategy beat doing nothing?",
-                          out_fig / "summary_heatmap.png")
+                          out_fig / "summary_heatmap")
 
     # 3) 成本 & 校準（只有二分類資料有）：XGBoost，test set
     cost_rows, brier_rows = [], []
@@ -305,6 +336,8 @@ def main(argv: list[str] | None = None) -> None:
     cfg = yaml.safe_load(Path(args.config).read_text(encoding="utf-8"))
     t0 = time.time()
     per_dataset = [s for s in args.stages if s not in ("ir", "summary")]
+    if "figures" in args.stages:
+        plot_ir()
     if per_dataset:
         for key in args.dataset or cfg["datasets"]:
             run_dataset(key, cfg, per_dataset, args.n_jobs)
